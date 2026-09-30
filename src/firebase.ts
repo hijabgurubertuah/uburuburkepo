@@ -28,15 +28,17 @@ export async function testFirestoreConnection() {
 // Fetch default layout from Firestore
 export async function fetchRemoteTextLayout(): Promise<LockedLayoutConfig | null> {
   try {
+    const isMobile = typeof window !== 'undefined' ? window.innerWidth < 640 : false;
     const docRef = doc(db, 'settings', 'text_layout');
     const snap = await getDoc(docRef);
     if (snap.exists()) {
       const data = snap.data();
+      const fetchedFontSize = isMobile ? 6 : (data.fontSize === 18 ? 13 : (data.fontSize ?? 13));
       return {
-        x: data.x ?? 12,
-        y: data.y ?? 24,
-        width: data.width ?? 38,
-        fontSize: data.fontSize ?? 17,
+        x: data.x ?? 22,
+        y: data.y ?? 36,
+        width: data.width ?? 62,
+        fontSize: fetchedFontSize,
         lineHeight: data.lineHeight ?? 1.6,
         textAlign: data.textAlign ?? 'left',
         isLocked: data.isLocked ?? true,

@@ -34,7 +34,7 @@ function createAnnotationFromLayout(
   initialText = DEFAULT_PLACEHOLDER_TEXT
 ): TextAnnotation {
   const isMobile = typeof window !== 'undefined' ? window.innerWidth < 640 : false;
-  const initialFontSize = isMobile ? 6 : (layout.fontSize || 13);
+  const initialFontSize = isMobile ? 6 : (layout.fontSize === 18 ? 13 : (layout.fontSize || 13));
 
   return {
     id: `ann_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -43,11 +43,11 @@ function createAnnotationFromLayout(
     y: layout.y,
     width: layout.width,
     fontSize: initialFontSize,
-    fontFamily: '"Comic Sans MS", "Comic Sans", cursive',
+    fontFamily: '"Plus Jakarta Sans", sans-serif',
     fontWeight: 'normal',
     fontStyle: 'normal',
     textDecoration: 'none',
-    color: '#000000', // Hitam murni
+    color: '#000000', // Hitam mutlak
     backgroundColor: 'transparent', // Latar transparan murni
     backgroundOpacity: 0,
     borderColor: 'transparent',
@@ -104,24 +104,31 @@ export default function App() {
   // Load folder files and sync remote Firebase layout on mount
   useEffect(() => {
     // 1. Non-blocking Firebase sync
+    const isMobile = typeof window !== 'undefined' ? window.innerWidth < 640 : false;
     testFirestoreConnection();
     fetchRemoteTextLayout().then((remoteLayout) => {
       if (remoteLayout) {
-        setLockedLayout(remoteLayout);
-        saveLockedLayout(remoteLayout);
+        const layoutToUse: LockedLayoutConfig = {
+          ...remoteLayout,
+          fontSize: isMobile ? 6 : (remoteLayout.fontSize === 18 ? 13 : remoteLayout.fontSize),
+        };
+        setLockedLayout(layoutToUse);
+        saveLockedLayout(layoutToUse);
         // Sync to loaded pages
         setPages((prev) =>
           prev.map((page) => ({
             ...page,
             annotations: page.annotations.map((ann) => ({
               ...ann,
-              x: remoteLayout.x,
-              y: remoteLayout.y,
-              width: remoteLayout.width,
-              fontSize: remoteLayout.fontSize,
-              lineHeight: remoteLayout.lineHeight,
-              textAlign: remoteLayout.textAlign,
-              locked: remoteLayout.isLocked,
+              x: layoutToUse.x,
+              y: layoutToUse.y,
+              width: layoutToUse.width,
+              fontSize: layoutToUse.fontSize,
+              lineHeight: layoutToUse.lineHeight,
+              textAlign: layoutToUse.textAlign,
+              locked: layoutToUse.isLocked,
+              fontFamily: ann.fontFamily || '"Plus Jakarta Sans", sans-serif',
+              color: '#000000',
             })),
           }))
         );

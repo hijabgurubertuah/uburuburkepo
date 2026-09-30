@@ -240,16 +240,21 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
   return (
     <div 
       className="flex-1 flex flex-col bg-slate-950 relative overflow-hidden select-none w-full h-full"
+      onClick={() => onSelectAnnotation(null)}
     >
       {/* Scrollable Document Feed (Top to Bottom): Ruang atas & bawah luas agar tombol kontrol di atas kertas tidak terpotong */}
       <div 
         ref={containerRef}
+        onClick={() => onSelectAnnotation(null)}
         className="flex-1 overflow-y-auto px-3 pt-8 pb-12 sm:px-8 space-y-8 sm:space-y-10 bg-[radial-gradient(#1e293b_1.2px,transparent_1.2px)] [background-size:20px_20px]"
       >
         {/* Quick Top Button: Tambah Halaman Baru di Atas */}
         <div className="flex items-center justify-center pb-1">
           <button
-            onClick={onAddNewPage}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddNewPage();
+            }}
             className="py-2 px-4 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-semibold flex items-center gap-2 shadow-lg shadow-cyan-600/20 transition cursor-pointer hover:scale-102"
             title="Tambah lembar baru di bagian paling atas"
           >
@@ -265,11 +270,11 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
           return (
             <React.Fragment key={page.id}>
               <div 
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   onSelectPage(index);
-                  if (page.annotations[0]) {
-                    onSelectAnnotation(page.annotations[0].id);
-                  }
+                  // Tap on background deselects text so toolbar disappears
+                  onSelectAnnotation(null);
                 }}
                 className={`max-w-4xl mx-auto flex flex-col items-center transition-all ${
                   isSelectedPage ? 'scale-100' : 'opacity-90 hover:opacity-100'
@@ -278,6 +283,12 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                 {/* Lembar Dokumen - overflow-visible agar tombol kontrol selalu terlihat di atas kertas */}
                 <div 
                   id={`doc-sheet-${index}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectPage(index);
+                    // Tap on paper sheet deselects text so toolbar disappears
+                    onSelectAnnotation(null);
+                  }}
                   className={`document-page-sheet relative w-full max-w-[880px] aspect-[297/210] bg-white rounded-[2px] transition-all overflow-visible ${
                     isSelectedPage
                       ? 'ring-2 ring-cyan-500 shadow-[0_16px_36px_rgba(0,0,0,0.65)] ring-offset-2 ring-offset-slate-950'
@@ -363,62 +374,86 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                                 startDragAnnotation(e, ann, index);
                               }
                             }}
-                            className={`absolute left-0 -top-9 bg-slate-900/95 border border-cyan-500/70 shadow-2xl rounded-lg py-1 px-2.5 flex items-center gap-2 z-50 text-[11px] text-white backdrop-blur-md select-none whitespace-nowrap ${
+                            className={`absolute left-0 -top-9 bg-slate-900/95 border border-cyan-500/70 shadow-2xl rounded-lg py-1 px-2 flex items-center gap-1.5 z-50 text-[11px] text-white backdrop-blur-md select-none whitespace-nowrap ${
                               ann.locked ? 'cursor-default' : 'cursor-move hover:bg-slate-850'
                             }`}
                             title={ann.locked ? 'Posisi Terkunci' : 'Klik & tahan area menu ini untuk menyeret / menggeser teks'}
                           >
-                            {/* Koordinat / Status */}
-                            {ann.locked ? (
-                              <span className="font-mono text-[10px] text-amber-300 flex items-center gap-1 font-semibold">
-                                <Lock className="w-3 h-3 text-amber-400" /> Terkunci
+                            {/* Koordinat Posisi */}
+                            <span className="font-mono text-[10px] text-cyan-300 font-bold px-0.5">
+                              X:{ann.x}% Y:{ann.y}%
+                            </span>
+
+                            <div className="h-3 w-px bg-slate-700" />
+
+                            {/* Ukuran Kolom (Lebar) */}
+                            <div 
+                              onPointerDown={(e) => e.stopPropagation()}
+                              className="flex items-center gap-1 bg-slate-950/80 px-1.5 py-0.5 rounded border border-slate-800"
+                              title="Ukuran Lebar Kolom Teks"
+                            >
+                              <span className="text-[10px] text-slate-400 font-medium">L:</span>
+                              <button
+                                type="button"
+                                onClick={() => onUpdateAnnotation(ann.id, { width: Math.max(10, (ann.width || 62) - 2) })}
+                                className="w-4 h-4 rounded bg-slate-800 hover:bg-cyan-600 text-white text-[10px] font-bold flex items-center justify-center transition cursor-pointer"
+                                title="Perkecil Lebar Kolom (-2%)"
+                              >
+                                -
+                              </button>
+                              <span className="font-mono text-[10px] text-amber-300 font-bold">
+                                {ann.width || 62}%
                               </span>
-                            ) : (
-                              <span className="font-mono text-[10px] text-cyan-300 font-bold">
-                                X:{ann.x}% Y:{ann.y}%
-                              </span>
-                            )}
+                              <button
+                                type="button"
+                                onClick={() => onUpdateAnnotation(ann.id, { width: Math.min(100, (ann.width || 62) + 2) })}
+                                className="w-4 h-4 rounded bg-slate-800 hover:bg-cyan-600 text-white text-[10px] font-bold flex items-center justify-center transition cursor-pointer"
+                                title="Perbesar Lebar Kolom (+2%)"
+                              >
+                                +
+                              </button>
+                            </div>
 
                             <div className="h-3 w-px bg-slate-700" />
                             
-                            {/* Tombol Kunci / Buka Kunci */}
+                            {/* Tombol Kunci / Buka Kunci (Icon Saja) */}
                             <button
                               type="button"
                               onPointerDown={(e) => e.stopPropagation()}
                               onClick={() => onUpdateAnnotation(ann.id, { locked: !ann.locked })}
-                              className={`p-1 rounded flex items-center gap-1 text-[10px] transition cursor-pointer ${
+                              className={`p-1.5 rounded transition cursor-pointer flex items-center justify-center ${
                                 ann.locked 
                                   ? 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30' 
                                   : 'text-slate-300 hover:text-amber-400 hover:bg-slate-800'
                               }`}
                               title={ann.locked ? 'Buka Kunci Posisi' : 'Kunci Posisi Teks'}
+                              aria-label={ann.locked ? 'Buka Kunci' : 'Kunci Posisi'}
                             >
-                              {ann.locked ? <Unlock className="w-3 h-3 text-amber-400" /> : <Lock className="w-3 h-3" />}
-                              <span>{ann.locked ? 'Buka' : 'Kunci'}</span>
+                              {ann.locked ? <Unlock className="w-3.5 h-3.5 text-amber-400" /> : <Lock className="w-3.5 h-3.5" />}
                             </button>
 
-                            {/* Tombol Duplikat / Kopi */}
+                            {/* Tombol Duplikat / Kopi (Icon Saja) */}
                             <button
                               type="button"
                               onPointerDown={(e) => e.stopPropagation()}
                               onClick={() => onDuplicateAnnotation(ann.id)}
-                              className="p-1 rounded text-slate-300 hover:text-cyan-300 hover:bg-slate-800 flex items-center gap-1 text-[10px] transition cursor-pointer"
+                              className="p-1.5 rounded text-slate-300 hover:text-cyan-300 hover:bg-slate-800 transition cursor-pointer flex items-center justify-center"
                               title="Duplikat / Salin Teks"
+                              aria-label="Salin Teks"
                             >
-                              <Copy className="w-3 h-3 text-cyan-400" />
-                              <span>Kopi</span>
+                              <Copy className="w-3.5 h-3.5 text-cyan-400" />
                             </button>
 
-                            {/* Tombol Hapus */}
+                            {/* Tombol Hapus (Icon Saja) */}
                             <button
                               type="button"
                               onPointerDown={(e) => e.stopPropagation()}
                               onClick={() => onDeleteAnnotation(ann.id)}
-                              className="p-1 rounded text-slate-300 hover:text-rose-400 hover:bg-rose-950/40 flex items-center gap-1 text-[10px] transition cursor-pointer"
+                              className="p-1.5 rounded text-slate-300 hover:text-rose-400 hover:bg-rose-950/40 transition cursor-pointer flex items-center justify-center"
                               title="Hapus Kolom Teks"
+                              aria-label="Hapus Kolom Teks"
                             >
-                              <Trash2 className="w-3 h-3 text-rose-400" />
-                              <span>Hapus</span>
+                              <Trash2 className="w-3.5 h-3.5 text-rose-400" />
                             </button>
                           </div>
                         )}
@@ -426,12 +461,12 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                         {/* Text Container Body */}
                         <div
                           style={{
-                            fontFamily: ann.fontFamily || '"Comic Sans MS", "Comic Sans", cursive',
-                            fontSize: `${ann.fontSize || 13}px`,
+                            fontFamily: ann.fontFamily || '"Plus Jakarta Sans", sans-serif',
+                            fontSize: `${ann.fontSize || (typeof window !== 'undefined' && window.innerWidth < 640 ? 6 : 13)}px`,
                             fontWeight: ann.fontWeight,
                             fontStyle: ann.fontStyle,
                             textDecoration: ann.textDecoration,
-                            color: ann.color || '#000000',
+                            color: '#000000', // Hitam mutlak
                             backgroundColor:
                               ann.backgroundColor === 'transparent'
                                 ? 'transparent'
@@ -458,9 +493,9 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                                 onUpdateAnnotation(ann.id, { text: e.target.value })
                               }
                               style={{
-                                fontSize: `${ann.fontSize || 13}px`,
-                                color: ann.color || '#000000',
-                                fontFamily: ann.fontFamily || '"Comic Sans MS", "Comic Sans", cursive',
+                                fontSize: `${ann.fontSize || (typeof window !== 'undefined' && window.innerWidth < 640 ? 6 : 13)}px`,
+                                color: '#000000',
+                                fontFamily: ann.fontFamily || '"Plus Jakarta Sans", sans-serif',
                                 lineHeight: ann.lineHeight ? `${ann.lineHeight}` : '1.6',
                               }}
                               className="bg-transparent border border-dashed border-cyan-500 outline-none w-full resize-none p-1 rounded font-sans"

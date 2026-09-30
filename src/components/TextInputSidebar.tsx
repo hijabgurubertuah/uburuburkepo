@@ -25,8 +25,8 @@ interface TextInputSidebarProps {
 }
 
 const AVAILABLE_FONTS = [
-  { name: 'Comic Sans MS', value: '"Comic Sans MS", "Comic Sans", cursive' },
   { name: 'Plus Jakarta Sans', value: '"Plus Jakarta Sans", sans-serif' },
+  { name: 'Comic Sans MS', value: '"Comic Sans MS", "Comic Sans", cursive' },
   { name: 'Arial', value: 'Arial, Helvetica, sans-serif' },
   { name: 'Times New Roman', value: '"Times New Roman", Times, serif' },
   { name: 'Courier New', value: '"Courier New", Courier, monospace' },
@@ -285,6 +285,54 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
                 title={`Geser jarak baris: ${currentLineHeight.toFixed(1)}x`}
               />
             </div>
+          </div>
+
+          {/* Ukuran Kolom (Lebar Kolom Teks) */}
+          <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400 text-[11px] font-medium">Ukuran Lebar Kolom:</span>
+              <span className="text-[10px] text-amber-300 font-mono font-bold">{annotation.width || 62}%</span>
+            </div>
+            <div className="flex items-center justify-between bg-slate-900 rounded-lg p-1 border border-slate-800">
+              <button
+                type="button"
+                onClick={() => onUpdate({ width: Math.max(10, (annotation.width || 62) - 2) })}
+                className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:bg-cyan-600 text-slate-200 text-sm font-bold flex items-center justify-center transition cursor-pointer"
+                title="Perkecil Ukuran Kolom (-2%)"
+              >
+                -
+              </button>
+              <input
+                type="number"
+                min={10}
+                max={100}
+                value={annotation.width || 62}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  if (!isNaN(val)) {
+                    onUpdate({ width: Math.max(10, Math.min(100, val)) });
+                  }
+                }}
+                className="w-16 text-center bg-transparent font-mono text-amber-300 font-bold text-xs outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => onUpdate({ width: Math.min(100, (annotation.width || 62) + 2) })}
+                className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:bg-cyan-600 text-slate-200 text-sm font-bold flex items-center justify-center transition cursor-pointer"
+                title="Perbesar Ukuran Kolom (+2%)"
+              >
+                +
+              </button>
+            </div>
+            <input
+              type="range"
+              min={15}
+              max={100}
+              value={annotation.width || 62}
+              onChange={(e) => onUpdate({ width: parseInt(e.target.value, 10) })}
+              className="w-full accent-amber-400 h-1.5 bg-slate-800 rounded-lg cursor-pointer mt-0.5"
+              title={`Geser ukuran lebar kolom: ${annotation.width || 62}%`}
+            />
           </div>
 
           {/* Status Posisi Terkunci (Hanya Admin yang Bisa Mengatur Posisi Default) */}

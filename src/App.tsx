@@ -456,6 +456,7 @@ export default function App() {
             activePageIndex={activePageIndex}
             onSelectPage={setActivePageIndex}
             onAddNewPage={handleAddNewPage}
+            onDeletePage={handleDeletePage}
             selectedAnnotationId={selectedAnnotationId}
             onSelectAnnotation={(id) => {
               setSelectedAnnotationId(id);

@@ -7,7 +7,9 @@ import {
   Lock,
   Plus,
   CheckCircle,
-  FileSpreadsheet
+  FileSpreadsheet,
+  X,
+  AlertTriangle
 } from 'lucide-react';
 import { ImagePage, TextAnnotation } from '../types';
 
@@ -16,6 +18,7 @@ interface CanvasEditorProps {
   activePageIndex: number;
   onSelectPage: (index: number) => void;
   onAddNewPage: () => void;
+  onDeletePage?: (index: number) => void;
   selectedAnnotationId: string | null;
   onSelectAnnotation: (id: string | null) => void;
   onUpdateAnnotation: (id: string, updates: Partial<TextAnnotation>) => void;
@@ -44,6 +47,7 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
   activePageIndex,
   onSelectPage,
   onAddNewPage,
+  onDeletePage,
   selectedAnnotationId,
   onSelectAnnotation,
   onUpdateAnnotation,
@@ -57,6 +61,7 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
   const activeImageRef = useRef<HTMLImageElement>(null);
 
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
+  const [pageToDeleteIndex, setPageToDeleteIndex] = useState<number | null>(null);
 
   // Dragging state for annotations
   const [dragState, setDragState] = useState<{
@@ -245,6 +250,22 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                       : 'shadow-[0_8px_24px_rgba(0,0,0,0.5)] border border-slate-300 hover:ring-1 hover:ring-slate-600'
                   }`}
                 >
+                  {/* Tombol X Hapus Halaman di Sudut Atas Kertas */}
+                  {onDeletePage && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPageToDeleteIndex(index);
+                      }}
+                      className="absolute top-2.5 right-2.5 z-30 w-7 h-7 rounded-full bg-slate-900/80 hover:bg-rose-600 text-slate-300 hover:text-white backdrop-blur-xs border border-slate-700/80 hover:border-rose-500 shadow-md flex items-center justify-center transition cursor-pointer"
+                      title="Hapus Halaman Ini"
+                      aria-label="Hapus Halaman"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+
                   {/* Document Image Perfectly Fitted to A4 Sheet */}
                   <img
                     ref={isSelectedPage ? activeImageRef : undefined}
@@ -415,6 +436,57 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
           );
         })}
       </div>
+
+      {/* Notifikasi Konfirmasi Hapus Halaman */}
+      {pageToDeleteIndex !== null && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={(e) => {
+            e.stopPropagation();
+            setPageToDeleteIndex(null);
+          }}
+        >
+          <div 
+            className="bg-slate-900 border border-slate-700 rounded-2xl max-w-sm w-full p-5 shadow-2xl text-slate-100 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-11 h-11 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center justify-center mx-auto mb-3">
+              <Trash2 className="w-5 h-5" />
+            </div>
+            <h3 className="text-sm font-bold text-center text-white mb-1.5">
+              Hapus Halaman {pageToDeleteIndex + 1}?
+            </h3>
+            <p className="text-xs text-slate-400 text-center mb-5 leading-relaxed">
+              {pages.length <= 1 
+                ? 'Dokumen harus memiliki minimal 1 lembar halaman.'
+                : `Apakah Anda yakin ingin menghapus lembar halaman #${pageToDeleteIndex + 1}? Seluruh isi teks di halaman ini akan dihapus.`}
+            </p>
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setPageToDeleteIndex(null)}
+                className="flex-1 py-2 rounded-xl text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 transition cursor-pointer"
+              >
+                {pages.length <= 1 ? 'Mengerti' : 'Batal'}
+              </button>
+              {pages.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onDeletePage && pageToDeleteIndex !== null) {
+                      onDeletePage(pageToDeleteIndex);
+                    }
+                    setPageToDeleteIndex(null);
+                  }}
+                  className="flex-1 py-2 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 transition shadow-md shadow-rose-600/30 cursor-pointer"
+                >
+                  Ya, Hapus
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

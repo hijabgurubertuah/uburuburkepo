@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { FolderAppNavbar } from './components/FolderAppNavbar';
-import { MobileThumbnailBar } from './components/MobileThumbnailBar';
 import { DriveFolderSidebar } from './components/DriveFolderSidebar';
 import { TextInputSidebar } from './components/TextInputSidebar';
 import { CanvasEditor } from './components/CanvasEditor';
@@ -10,7 +9,8 @@ import { ImagePage, TextAnnotation } from './types';
 import { 
   INITIAL_FOLDER_URL, 
   fetchDriveFolderFiles, 
-  DriveFolderFile 
+  DriveFolderFile,
+  PRELOADED_FOLDER_FILES
 } from './utils/folderService';
 import { 
   LockedLayoutConfig, 
@@ -64,10 +64,29 @@ function createAnnotationFromLayout(
   };
 }
 
+// Initial preloaded pages ready immediately on frame 1
+const defaultLayout = getSavedLockedLayout();
+const DEFAULT_INITIAL_PAGES: ImagePage[] = PRELOADED_FOLDER_FILES.map((f, idx) => ({
+  id: `page_${f.id}`,
+  title: f.name,
+  originalFileName: f.name,
+  dataUrl: f.directUrl || f.proxyUrl,
+  naturalWidth: 1600,
+  naturalHeight: 1131,
+  annotations: [
+    createAnnotationFromLayout(
+      defaultLayout,
+      `Baris 1: Keterangan Dokumen #${idx + 1}\nBaris 2: Nama Lengkap\nBaris 3: Nomor Registrasi\nBaris 4: Tanggal Pelaksanaan\nBaris 5: Uraian Kegiatan\nBaris 6: Keterangan Hasil\nBaris 7: Pengesahan & Tanda Tangan`
+    ),
+  ],
+}));
+
 export default function App() {
-  const [pages, setPages] = useState<ImagePage[]>([]);
+  const [pages, setPages] = useState<ImagePage[]>(DEFAULT_INITIAL_PAGES);
   const [activePageIndex, setActivePageIndex] = useState<number>(0);
-  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(
+    DEFAULT_INITIAL_PAGES[0]?.annotations[0]?.id || null
+  );
   const [isLoadingFolder, setIsLoadingFolder] = useState<boolean>(false);
 
   // 2 Separate Hidden Sidebars State
@@ -83,58 +102,63 @@ export default function App() {
 
   // Load folder files and sync remote Firebase layout on mount
   useEffect(() => {
-    const initApp = async () => {
-      // Test firestore connection
-      testFirestoreConnection();
-
-      // Fetch remote layout from Firebase if available
-      const remoteLayout = await fetchRemoteTextLayout();
+    // 1. Non-blocking Firebase sync
+    testFirestoreConnection();
+    fetchRemoteTextLayout().then((remoteLayout) => {
       if (remoteLayout) {
         setLockedLayout(remoteLayout);
         saveLockedLayout(remoteLayout);
+        // Sync to loaded pages
+        setPages((prev) =>
+          prev.map((page) => ({
+            ...page,
+            annotations: page.annotations.map((ann) => ({
+              ...ann,
+              x: remoteLayout.x,
+              y: remoteLayout.y,
+              width: remoteLayout.width,
+              fontSize: remoteLayout.fontSize,
+              lineHeight: remoteLayout.lineHeight,
+              textAlign: remoteLayout.textAlign,
+              locked: remoteLayout.isLocked,
+            })),
+          }))
+        );
       }
+    });
 
-      await loadFolderImages();
-    };
-
-    initApp();
+    // 2. Fetch any extra folder images if updated
+    loadFolderImages();
   }, []);
 
   const loadFolderImages = async () => {
-    setIsLoadingFolder(true);
     try {
       const files: DriveFolderFile[] = await fetchDriveFolderFiles(INITIAL_FOLDER_URL);
-      const currentLayout = getSavedLockedLayout();
-      
-      const newPages: ImagePage[] = files.map((f, idx) => ({
-        id: `page_${f.id}`,
-        title: f.name,
-        originalFileName: f.name,
-        dataUrl: f.proxyUrl || f.directUrl,
-        naturalWidth: 1600,
-        naturalHeight: 1131,
-        // Each image has its independent 7-line transparent black text annotation
-        annotations: [
-          createAnnotationFromLayout(
-            currentLayout,
-            `Baris 1: Keterangan Dokumen #${idx + 1}\nBaris 2: Nama Lengkap\nBaris 3: Nomor Registrasi\nBaris 4: Tanggal Pelaksanaan\nBaris 5: Uraian Kegiatan\nBaris 6: Keterangan Hasil\nBaris 7: Pengesahan & Tanda Tangan`
-          ),
-        ],
-      }));
+      if (files.length > 0) {
+        const currentLayout = getSavedLockedLayout();
+        const loadedPages: ImagePage[] = files.map((f, idx) => ({
+          id: `page_${f.id}`,
+          title: f.name,
+          originalFileName: f.name,
+          dataUrl: f.directUrl || f.proxyUrl,
+          naturalWidth: 1600,
+          naturalHeight: 1131,
+          annotations: [
+            createAnnotationFromLayout(
+              currentLayout,
+              `Baris 1: Keterangan Dokumen #${idx + 1}\nBaris 2: Nama Lengkap\nBaris 3: Nomor Registrasi\nBaris 4: Tanggal Pelaksanaan\nBaris 5: Uraian Kegiatan\nBaris 6: Keterangan Hasil\nBaris 7: Pengesahan & Tanda Tangan`
+            ),
+          ],
+        }));
 
-      setPages(newPages);
-      setActivePageIndex(0);
-      if (newPages[0]?.annotations?.length > 0) {
-        setSelectedAnnotationId(newPages[0].annotations[0].id);
+        setPages(loadedPages);
       }
     } catch (err) {
-      console.error('Failed to load folder images:', err);
-    } finally {
-      setIsLoadingFolder(false);
+      console.warn('Folder files load notice:', err);
     }
   };
 
-  const activePage = pages[activePageIndex] || null;
+  const activePage = pages[activePageIndex] || pages[0] || null;
   const activeAnnotation = activePage?.annotations.find((a) => a.id === selectedAnnotationId) || activePage?.annotations[0] || null;
 
   // Make sure selectedAnnotationId stays in sync
@@ -385,23 +409,10 @@ export default function App() {
         </button>
       </div>
 
-      {/* 1. Top Navbar */}
+      {/* 1. Top Navbar: Cukup Judul Ubur Ubur Kepo dan Tombol Simpan PDF */}
       <FolderAppNavbar
-        activePage={activePage}
-        activePageIndex={activePageIndex}
         totalPages={pages.length}
         onExportPdf={() => setIsExportModalOpen(true)}
-        onOpenGuide={() => setIsGuideModalOpen(true)}
-      />
-
-      {/* 1.5. Mobile Always-Visible Thumbnail Strip (Pastikan Thumbnail Muncul Terlihat di HP) */}
-      <MobileThumbnailBar
-        pages={pages}
-        activePageIndex={activePageIndex}
-        onSelectPage={(index) => {
-          setActivePageIndex(index);
-        }}
-        onAddNewPage={handleAddNewPage}
       />
 
       {/* 2. Main Canvas Workspace: Full Screen Without Clutter */}
@@ -464,7 +475,7 @@ export default function App() {
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl flex flex-col items-center max-w-sm text-center">
             <Loader2 className="w-8 h-8 text-cyan-400 animate-spin mb-3" />
-            <p className="text-sm font-bold text-white">Memuat Gambar Landscape...</p>
+            <p className="text-sm font-bold text-white">Memuat Gambar...</p>
           </div>
         </div>
       )}

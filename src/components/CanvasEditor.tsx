@@ -237,24 +237,6 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                   isSelectedPage ? 'scale-100' : 'opacity-90 hover:opacity-100'
                 }`}
               >
-                {/* Clean Page Header (Hanya nomor halaman & judul) */}
-                <div className="w-full flex items-center justify-between text-xs px-2 mb-1.5 text-slate-400">
-                  <div className="flex items-center gap-2">
-                    <span 
-                      className={`font-bold px-2 py-0.5 rounded text-[11px] ${
-                        isSelectedPage
-                          ? 'bg-cyan-500 text-slate-950'
-                          : 'bg-slate-800 text-slate-300'
-                      }`}
-                    >
-                      Halaman {index + 1}
-                    </span>
-                    <span className="text-slate-300 font-medium truncate max-w-[200px]">
-                      {page.title}
-                    </span>
-                  </div>
-                </div>
-
                 {/* Lembar Dokumen */}
                 <div 
                   className={`relative w-full max-w-[880px] aspect-[297/210] bg-white rounded-[2px] overflow-hidden transition-all ${
@@ -270,6 +252,16 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                     alt={page.title}
                     className="w-full h-full object-fill select-none pointer-events-none"
                     draggable={false}
+                    loading="eager"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      const rawId = page.id.replace('page_', '');
+                      if (rawId && !target.src.includes('googleusercontent')) {
+                        target.src = `https://lh3.googleusercontent.com/d/${rawId}`;
+                      } else if (rawId && target.src.includes('googleusercontent')) {
+                        target.src = `/api/drive-image?id=${rawId}`;
+                      }
+                    }}
                   />
 
                   {/* Annotations Layer for this specific A4 sheet */}

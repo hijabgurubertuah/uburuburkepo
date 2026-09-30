@@ -450,7 +450,8 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                         >
                           {isEditing ? (
                             <textarea
-                              value={ann.text}
+                              value={ann.text === 'Isi teks disini' ? '' : ann.text}
+                              placeholder="Isi teks disini..."
                               autoFocus
                               onBlur={() => setEditingTextId(null)}
                               onChange={(e) =>
@@ -463,7 +464,7 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                                 lineHeight: ann.lineHeight ? `${ann.lineHeight}` : '1.6',
                               }}
                               className="bg-transparent border border-dashed border-cyan-500 outline-none w-full resize-none p-1 rounded font-sans"
-                              rows={ann.text.split('\n').length || 1}
+                              rows={ann.text ? ann.text.split('\n').length : 1}
                             />
                           ) : (
                             <div className="flex flex-col w-full text-line-blocks">
@@ -471,6 +472,7 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                                 ann.text.split('\n').map((lineText, lineIdx) => {
                                   const calcLineHeight = ann.lineHeight ? `${ann.lineHeight}` : '1.6';
                                   const customOffset = ann.lineOffsets && ann.lineOffsets[lineIdx] !== undefined ? ann.lineOffsets[lineIdx] : 0;
+                                  const isPlaceholder = lineText === 'Isi teks disini';
 
                                   return (
                                     <div
@@ -481,7 +483,9 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                                         marginTop: customOffset ? `${customOffset}px` : undefined,
                                         wordBreak: 'break-word',
                                       }}
-                                      className="text-line-item relative transition-colors duration-150 hover:bg-cyan-500/5 rounded-xs"
+                                      className={`text-line-item relative transition-colors duration-150 hover:bg-cyan-500/5 rounded-xs ${
+                                        isPlaceholder ? 'text-slate-400 italic' : ''
+                                      }`}
                                       data-line-index={lineIdx}
                                     >
                                       {lineText !== '' ? lineText : '\u00A0'}
@@ -489,7 +493,7 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                                   );
                                 })
                               ) : (
-                                <span className="text-slate-400 italic text-xs">[Klik sidebar 🆃 untuk menempel 7 baris teks]</span>
+                                <span className="text-slate-400 italic text-xs">Isi teks disini</span>
                               )}
                             </div>
                           )}

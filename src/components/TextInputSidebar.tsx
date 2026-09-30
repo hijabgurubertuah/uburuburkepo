@@ -160,11 +160,11 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
 
             {/* The single textarea */}
             <textarea
-              value={annotation.text}
+              value={annotation.text === 'Isi teks disini' ? '' : annotation.text}
               onChange={handleTextChange}
               rows={8}
-              placeholder="Tinggal tempel (paste) 7 baris teks di sini...&#10;Baris 1&#10;Baris 2&#10;Baris 3&#10;Baris 4&#10;Baris 5&#10;Baris 6&#10;Baris 7"
-              className="w-full bg-slate-950 border border-slate-700/80 rounded-xl p-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 font-mono resize-none leading-relaxed"
+              placeholder="Isi teks disini (tempel atau ketik teks baru)..."
+              className="w-full bg-slate-950 border border-slate-700/80 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-mono resize-none leading-relaxed"
             />
             <p className="text-[10px] text-cyan-400/90 leading-normal">
               💡 Setiap tombol Enter memisahkan teks menjadi kolom baris terpisah pada pratinjau yang tidak akan saling tumpang tindih.

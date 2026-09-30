@@ -24,30 +24,25 @@ import {
 } from './firebase';
 import { Loader2, Menu, Type } from 'lucide-react';
 
-const DEFAULT_7_LINES = [
-  'Baris 1: Keterangan Dokumen',
-  'Baris 2: Nama Lengkap',
-  'Baris 3: Nomor Registrasi / Induk',
-  'Baris 4: Tanggal Pelaksanaan',
-  'Baris 5: Uraian Kegiatan / Evaluasi',
-  'Baris 6: Keterangan Hasil / Catatan',
-  'Baris 7: Pengesahan & Tanda Tangan',
-].join('\n');
+const DEFAULT_PLACEHOLDER_TEXT = 'Isi teks disini';
 
 export const BLANK_PAPER_URL =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1131" viewBox="0 0 1600 1131"><rect width="1600" height="1131" fill="%23ffffff"/><rect x="25" y="25" width="1550" height="1081" fill="none" stroke="%23f1f5f9" stroke-width="2" stroke-dasharray="8 8"/></svg>';
 
 function createAnnotationFromLayout(
   layout: LockedLayoutConfig,
-  initialText = DEFAULT_7_LINES
+  initialText = DEFAULT_PLACEHOLDER_TEXT
 ): TextAnnotation {
+  const isMobile = typeof window !== 'undefined' ? window.innerWidth < 640 : false;
+  const initialFontSize = isMobile ? 6 : (layout.fontSize || 13);
+
   return {
     id: `ann_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
     text: initialText,
     x: layout.x,
     y: layout.y,
     width: layout.width,
-    fontSize: layout.fontSize || 13,
+    fontSize: initialFontSize,
     fontFamily: '"Comic Sans MS", "Comic Sans", cursive',
     fontWeight: 'normal',
     fontStyle: 'normal',
@@ -80,7 +75,7 @@ const DEFAULT_INITIAL_PAGES: ImagePage[] = [
     annotations: [
       createAnnotationFromLayout(
         defaultLayout,
-        DEFAULT_7_LINES
+        DEFAULT_PLACEHOLDER_TEXT
       ),
     ],
   },

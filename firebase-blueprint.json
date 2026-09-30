@@ -1,0 +1,54 @@
+{
+  "entities": {
+    "TextLayoutSettings": {
+      "title": "TextLayoutSettings",
+      "description": "Default position coordinates and typography layout for the 7-line text area, configurable only by admin.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "Horizontal position in percentage (0 - 100)"
+        },
+        "y": {
+          "type": "number",
+          "description": "Vertical position in percentage (0 - 100)"
+        },
+        "width": {
+          "type": "number",
+          "description": "Width in percentage (10 - 100)"
+        },
+        "fontSize": {
+          "type": "number",
+          "description": "Font size in pixels"
+        },
+        "lineHeight": {
+          "type": "number",
+          "description": "Line height spacing multiplier"
+        },
+        "textAlign": {
+          "type": "string",
+          "description": "Text alignment"
+        },
+        "fontFamily": {
+          "type": "string",
+          "description": "Font family name"
+        },
+        "isLocked": {
+          "type": "boolean",
+          "description": "Whether the text area is locked on user canvas"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of the last update"
+        }
+      },
+      "required": ["x", "y", "width", "fontSize", "lineHeight", "isLocked"]
+    }
+  },
+  "firestore": {
+    "/settings/text_layout": {
+      "schema": "TextLayoutSettings",
+      "description": "Stores the global default text position layout managed by admin."
+    }
+  }
+}

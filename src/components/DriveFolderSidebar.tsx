@@ -90,21 +90,6 @@ export const DriveFolderSidebar: React.FC<DriveFolderSidebarProps> = ({
               <X className="w-4 h-4" />
             </button>
           </div>
-
-          {/* Langsung Tambah Halaman Baru di Atas (Tanpa Buka Dialog File) */}
-          <button
-            onClick={() => {
-              onAddNewPage();
-              if (window.innerWidth < 768) {
-                onClose();
-              }
-            }}
-            className="w-full py-2 px-3 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-md shadow-cyan-600/20 cursor-pointer"
-            title="Tambah Halaman Baru di Atas Editor (yang sudah selesai ada di bawahnya)"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>+ Tambah Halaman Baru (di Atas)</span>
-          </button>
         </div>
 
         {/* Thumbnails List (Top to Bottom) */}
@@ -173,7 +158,14 @@ export const DriveFolderSidebar: React.FC<DriveFolderSidebarProps> = ({
                     src={page.dataUrl}
                     alt={page.title}
                     className="w-full h-full object-cover pointer-events-none group-hover:scale-102 transition-transform duration-200"
-                    loading="lazy"
+                    loading="eager"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      const rawId = page.id.replace('page_', '');
+                      if (rawId && !target.src.includes('googleusercontent')) {
+                        target.src = `https://lh3.googleusercontent.com/d/${rawId}`;
+                      }
+                    }}
                   />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[11px] font-medium gap-1">
                     <span>Pilih Gambar</span>

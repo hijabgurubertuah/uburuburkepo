@@ -31,10 +31,7 @@ export const FolderAppNavbar: React.FC<FolderAppNavbarProps> = ({
         </div>
         <div>
           <h1 className="font-bold text-sm tracking-tight text-white flex items-center gap-1.5">
-            <span>DocuText</span>
-            <span className="text-[10px] font-semibold text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 px-1.5 py-0.2 rounded-full">
-              Landscape
-            </span>
+            <span>Ubur Ubur Kepa</span>
           </h1>
         </div>
       </div>
@@ -45,9 +42,6 @@ export const FolderAppNavbar: React.FC<FolderAppNavbarProps> = ({
           <FolderOpen className="w-3.5 h-3.5 text-blue-400" />
           <span className="truncate max-w-[140px] sm:max-w-[240px]">
             <strong className="text-white">{activePage.originalFileName}</strong> ({activePageIndex + 1}/{totalPages})
-          </span>
-          <span className="hidden sm:inline-block text-[10px] bg-slate-800 text-cyan-300 px-1.5 py-0.2 rounded">
-            Landscape
           </span>
         </div>
       )}

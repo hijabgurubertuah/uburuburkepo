@@ -4,13 +4,13 @@ import {
   Type, 
   Clipboard, 
   Lock, 
-  Unlock, 
   Check, 
   ChevronDown,
-  Sparkles
+  Settings
 } from 'lucide-react';
 import { TextAnnotation } from '../types';
 import { LockedLayoutConfig, saveLockedLayout } from '../config/lockedLayout';
+import { AdminPositionModal } from './AdminPositionModal';
 
 interface TextInputSidebarProps {
   isOpen: boolean;
@@ -46,6 +46,7 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
   onUpdateLockedLayout,
 }) => {
   const [pasteSuccess, setPasteSuccess] = useState(false);
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
 
   if (!isOpen || !annotation) return null;
 
@@ -78,39 +79,6 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
       }
     } catch {
       alert('Silakan tekan Ctrl+V pada kolom teks untuk menempel 7 baris.');
-    }
-  };
-
-  const handleToggleLock = () => {
-    const nextLocked = !lockedLayout.isLocked;
-    const updated: LockedLayoutConfig = {
-      ...lockedLayout,
-      isLocked: nextLocked,
-      x: annotation.x,
-      y: annotation.y,
-      width: annotation.width || lockedLayout.width,
-      fontSize: annotation.fontSize,
-      lineHeight: annotation.lineHeight || lockedLayout.lineHeight,
-      textAlign: annotation.textAlign,
-    };
-
-    onUpdateLockedLayout(updated);
-    saveLockedLayout(updated);
-
-    onUpdate({
-      locked: nextLocked,
-      x: updated.x,
-      y: updated.y,
-      width: updated.width,
-      fontSize: updated.fontSize,
-      lineHeight: updated.lineHeight,
-      textAlign: updated.textAlign,
-      color: '#000000',
-      backgroundColor: 'transparent',
-    });
-
-    if (nextLocked) {
-      alert('Posisi area teks berhasil DIKUNCI dan disimpan permanen.');
     }
   };
 
@@ -153,7 +121,7 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
             title="Tutup Sidebar"
           >
             <X className="w-4 h-4" />
@@ -182,7 +150,7 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
               <button
                 type="button"
                 onClick={handlePasteFromClipboard}
-                className="text-[10px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 flex items-center gap-1 transition"
+                className="text-[10px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 flex items-center gap-1 transition cursor-pointer"
                 title="Tempel teks langsung dari clipboard"
               >
                 <Clipboard className="w-3 h-3" />
@@ -228,7 +196,7 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
             </div>
           </div>
 
-          {/* Stepper Controls: Ukuran Font & Jarak Baris (Tambah & Kurang) */}
+          {/* Stepper Controls: Ukuran Font & Jarak Baris */}
           <div className="grid grid-cols-2 gap-2.5">
             {/* Ukuran Font Stepper */}
             <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 flex flex-col gap-1.5">
@@ -237,7 +205,7 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
                 <button
                   type="button"
                   onClick={() => onUpdate({ fontSize: Math.max(10, annotation.fontSize - 1) })}
-                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:bg-cyan-600 text-slate-200 text-sm font-bold flex items-center justify-center transition"
+                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:bg-cyan-600 text-slate-200 text-sm font-bold flex items-center justify-center transition cursor-pointer"
                   title="Kurang Ukuran Font"
                 >
                   -
@@ -248,7 +216,7 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
                 <button
                   type="button"
                   onClick={() => onUpdate({ fontSize: Math.min(60, annotation.fontSize + 1) })}
-                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:bg-cyan-600 text-slate-200 text-sm font-bold flex items-center justify-center transition"
+                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:bg-cyan-600 text-slate-200 text-sm font-bold flex items-center justify-center transition cursor-pointer"
                   title="Tambah Ukuran Font"
                 >
                   +
@@ -256,14 +224,14 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
               </div>
             </div>
 
-            {/* Jarak Baris Stepper (Bukan slider, tapi Tambah & Kurang) */}
+            {/* Jarak Baris Stepper */}
             <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 flex flex-col gap-1.5">
               <span className="text-slate-400 text-[11px] font-medium">Jarak Baris:</span>
               <div className="flex items-center justify-between bg-slate-900 rounded-lg p-1 border border-slate-800">
                 <button
                   type="button"
                   onClick={handleDecreaseLineHeight}
-                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:bg-cyan-600 text-slate-200 text-sm font-bold flex items-center justify-center transition"
+                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:bg-cyan-600 text-slate-200 text-sm font-bold flex items-center justify-center transition cursor-pointer"
                   title="Rapatkan Jarak Baris (-)"
                 >
                   -
@@ -274,7 +242,7 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
                 <button
                   type="button"
                   onClick={handleIncreaseLineHeight}
-                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:bg-cyan-600 text-slate-200 text-sm font-bold flex items-center justify-center transition"
+                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:bg-cyan-600 text-slate-200 text-sm font-bold flex items-center justify-center transition cursor-pointer"
                   title="Renggangkan Jarak Baris (+)"
                 >
                   +
@@ -283,42 +251,48 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
             </div>
           </div>
 
-          {/* Lock / Unlock Toggle Button */}
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={handleToggleLock}
-              className={`w-full py-2.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition shadow-sm ${
-                lockedLayout.isLocked
-                  ? 'bg-emerald-950/50 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-900/60'
-                  : 'bg-amber-950/50 text-amber-300 border border-amber-500/40 hover:bg-amber-900/60'
-              }`}
-              title={
-                lockedLayout.isLocked
-                  ? 'Posisi area teks terkunci permanen agar tidak bisa digeser orang lain. Klik untuk membuka kunci jika ingin mengubah posisi.'
-                  : 'Posisi sedang terbuka (bisa digeser). Klik tombol ini untuk MENGUNCI dan menyimpan posisi permanen.'
-              }
-            >
-              {lockedLayout.isLocked ? (
-                <>
-                  <Lock className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Posisi Area Terkunci</span>
-                </>
-              ) : (
-                <>
-                  <Unlock className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                  <span>Kunci Posisi Sekarang</span>
-                </>
-              )}
-            </button>
-            <p className="text-[10px] text-slate-400 text-center mt-1">
-              {lockedLayout.isLocked 
-                ? 'Posisi di gambar terkunci dan aman dari geseran pengguna lain.'
-                : 'Geser area teks pada kanvas, lalu klik kunci untuk menyimpan posisi.'}
-            </p>
+          {/* Status Posisi Terkunci (Hanya Admin yang Bisa Mengatur Posisi Default) */}
+          <div className="pt-1">
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/70 border border-slate-800 text-slate-300 text-[11px]">
+              <div className="flex items-center gap-2">
+                <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="font-medium">Posisi Default Terkunci</span>
+              </div>
+              <span className="text-[10px] text-slate-500 font-mono">
+                X:{lockedLayout.x}% Y:{lockedLayout.y}%
+              </span>
+            </div>
           </div>
         </div>
+
+        {/* Footer: Tombol Gerigi Saja di Bawah Sidebar Input Teks */}
+        <div className="p-3 border-t border-slate-800 bg-slate-950/80 flex items-center justify-between">
+          <span className="text-[10px] text-slate-500">
+            Pengaturan admin
+          </span>
+
+          {/* Tombol Gerigi Saja (Icon-only) */}
+          <button
+            type="button"
+            onClick={() => setIsAdminModalOpen(true)}
+            className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-cyan-300 border border-slate-700 transition cursor-pointer shadow-sm"
+            title="Pengaturan Posisi Teks (Admin: password admin 123)"
+            aria-label="Pengaturan Posisi Teks"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+        </div>
       </aside>
+
+      {/* Admin Setting Modal (Password: admin 123) */}
+      <AdminPositionModal
+        isOpen={isAdminModalOpen}
+        onClose={() => setIsAdminModalOpen(false)}
+        lockedLayout={lockedLayout}
+        onSaveLockedLayout={(newLayout) => {
+          onUpdateLockedLayout(newLayout);
+        }}
+      />
     </>
   );
 };

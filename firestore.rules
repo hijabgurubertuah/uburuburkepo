@@ -1,0 +1,37 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default Deny All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isValidTextLayout(data) {
+      return data.keys().hasAll(['x', 'y', 'width', 'fontSize', 'lineHeight', 'isLocked'])
+        && data.x is number && data.x >= 0 && data.x <= 100
+        && data.y is number && data.y >= 0 && data.y <= 100
+        && data.width is number && data.width >= 10 && data.width <= 100
+        && data.fontSize is number && data.fontSize >= 8 && data.fontSize <= 80
+        && data.lineHeight is number && data.lineHeight >= 0.8 && data.lineHeight <= 5.0
+        && data.isLocked is bool;
+    }
+
+    // Settings Collection: text_layout configuration
+    match /settings/{settingId} {
+      allow get: if isValidId(settingId);
+      allow list: if true;
+      allow create, update: if isValidId(settingId) && settingId == 'text_layout' && isValidTextLayout(incoming());
+      allow delete: if false;
+    }
+  }
+}

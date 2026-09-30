@@ -203,27 +203,26 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
       onPointerMove={handleAnnotationPointerMove}
       onPointerUp={handleAnnotationPointerUp}
     >
-      {/* Scrollable Document Feed (Top to Bottom): Jarak Antar Halaman Buku yang Nyata */}
+      {/* Scrollable Document Feed (Top to Bottom): Jarak Antar Halaman yang Pas */}
       <div 
         ref={containerRef}
-        className="flex-1 overflow-y-auto px-3 py-8 sm:px-8 md:px-12 space-y-16 sm:space-y-20 bg-[radial-gradient(#1e293b_1.2px,transparent_1.2px)] [background-size:20px_20px]"
+        className="flex-1 overflow-y-auto px-3 py-4 sm:px-8 space-y-4 sm:space-y-6 bg-[radial-gradient(#1e293b_1.2px,transparent_1.2px)] [background-size:20px_20px]"
       >
         {/* Quick Top Button: Tambah Halaman Baru di Atas */}
-        <div className="flex items-center justify-center pb-2">
+        <div className="flex items-center justify-center pb-1">
           <button
             onClick={onAddNewPage}
-            className="py-2.5 px-5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-semibold flex items-center gap-2 shadow-xl shadow-cyan-600/25 transition cursor-pointer hover:scale-102"
-            title="Tambah lembar kertas A4 baru di bagian paling atas"
+            className="py-2 px-4 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-semibold flex items-center gap-2 shadow-lg shadow-cyan-600/20 transition cursor-pointer hover:scale-102"
+            title="Tambah lembar baru di bagian paling atas"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Tambah Halaman A4 di Atas</span>
+            <span>+ Tambah Halaman Baru di Atas</span>
           </button>
         </div>
 
-        {/* Render Each Page As An Authentic A4 Landscape Sheet (297mm x 210mm) */}
+        {/* Render Each Page */}
         {pages.map((page, index) => {
           const isSelectedPage = index === activePageIndex;
-          const hasText = (page.annotations?.[0]?.text || '').trim().length > 0;
 
           return (
             <React.Fragment key={page.id}>
@@ -238,54 +237,30 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                   isSelectedPage ? 'scale-100' : 'opacity-90 hover:opacity-100'
                 }`}
               >
-                {/* Page Meta Bar (Header Lembar A4) */}
-                <div className="w-full flex items-center justify-between text-xs px-2 mb-2 text-slate-400">
+                {/* Clean Page Header (Hanya nomor halaman & judul) */}
+                <div className="w-full flex items-center justify-between text-xs px-2 mb-1.5 text-slate-400">
                   <div className="flex items-center gap-2">
                     <span 
-                      className={`font-bold px-2.5 py-0.5 rounded text-[11px] flex items-center gap-1.5 shadow-sm ${
+                      className={`font-bold px-2 py-0.5 rounded text-[11px] ${
                         isSelectedPage
-                          ? 'bg-cyan-500 text-slate-950 font-bold'
+                          ? 'bg-cyan-500 text-slate-950'
                           : 'bg-slate-800 text-slate-300'
                       }`}
                     >
-                      <span>Halaman {index + 1}</span>
+                      Halaman {index + 1}
                     </span>
-
-                    <span className="text-[10px] text-slate-400 font-mono bg-slate-900/80 px-2 py-0.5 rounded border border-slate-800">
-                      Kertas A4 (297 × 210 mm)
-                    </span>
-
-                    <span className="text-slate-300 font-medium truncate max-w-[180px] hidden sm:inline-block">
+                    <span className="text-slate-300 font-medium truncate max-w-[200px]">
                       {page.title}
                     </span>
-
-                    {isSelectedPage && (
-                      <span className="text-[10px] text-cyan-400 font-semibold bg-cyan-500/10 border border-cyan-500/30 px-2 py-0.5 rounded-full">
-                        Sedang Diedit
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {hasText ? (
-                      <span className="text-[11px] text-emerald-400 flex items-center gap-1 font-medium bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                        <CheckCircle className="w-3 h-3" />
-                        <span>Selesai Terisi</span>
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-slate-500 italic bg-slate-900/60 px-2 py-0.5 rounded">
-                        Belum diisi
-                      </span>
-                    )}
                   </div>
                 </div>
 
-                {/* Selembar Kertas A4 Landscape Asli (Proporsi 297:210, Tebal, & Berbayang Nyata) */}
+                {/* Lembar Dokumen */}
                 <div 
                   className={`relative w-full max-w-[880px] aspect-[297/210] bg-white rounded-[2px] overflow-hidden transition-all ${
                     isSelectedPage
-                      ? 'ring-2 ring-cyan-500 shadow-[0_20px_50px_rgba(0,0,0,0.7)] ring-offset-4 ring-offset-slate-950'
-                      : 'shadow-[0_12px_36px_rgba(0,0,0,0.55)] border border-slate-300 hover:ring-1 hover:ring-slate-600'
+                      ? 'ring-2 ring-cyan-500 shadow-[0_16px_36px_rgba(0,0,0,0.65)] ring-offset-2 ring-offset-slate-950'
+                      : 'shadow-[0_8px_24px_rgba(0,0,0,0.5)] border border-slate-300 hover:ring-1 hover:ring-slate-600'
                   }`}
                 >
                   {/* Document Image Perfectly Fitted to A4 Sheet */}
@@ -438,16 +413,10 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                 </div>
               </div>
 
-              {/* Jarak Antar Halaman Buku & Garis Pembatas Lembar A4 */}
+              {/* Garis pemisah halus tanpa tulisan */}
               {index < pages.length - 1 && (
-                <div className="w-full max-w-4xl flex items-center justify-center py-6 text-slate-600 select-none">
-                  <div className="h-px bg-slate-800/80 flex-1 border-t border-dashed border-slate-700/60" />
-                  <span className="px-4 text-[10px] font-mono tracking-widest text-slate-500 flex items-center gap-2">
-                    <span>Batas Lembar A4</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-500/50" />
-                    <span>Halaman {index + 2}</span>
-                  </span>
-                  <div className="h-px bg-slate-800/80 flex-1 border-t border-dashed border-slate-700/60" />
+                <div className="w-full max-w-4xl flex items-center justify-center py-2 text-slate-700/50 select-none">
+                  <div className="h-px bg-slate-800/60 w-3/4" />
                 </div>
               )}
             </React.Fragment>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FolderAppNavbar } from './components/FolderAppNavbar';
+import { MobileThumbnailBar } from './components/MobileThumbnailBar';
 import { DriveFolderSidebar } from './components/DriveFolderSidebar';
 import { TextInputSidebar } from './components/TextInputSidebar';
 import { CanvasEditor } from './components/CanvasEditor';
@@ -16,6 +17,11 @@ import {
   getSavedLockedLayout, 
   saveLockedLayout 
 } from './config/lockedLayout';
+import { 
+  testFirestoreConnection, 
+  fetchRemoteTextLayout, 
+  saveRemoteTextLayout 
+} from './firebase';
 import { Loader2, Menu, Type } from 'lucide-react';
 
 const DEFAULT_7_LINES = [
@@ -75,9 +81,23 @@ export default function App() {
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState<boolean>(false);
 
-  // Load folder files on mount
+  // Load folder files and sync remote Firebase layout on mount
   useEffect(() => {
-    loadFolderImages();
+    const initApp = async () => {
+      // Test firestore connection
+      testFirestoreConnection();
+
+      // Fetch remote layout from Firebase if available
+      const remoteLayout = await fetchRemoteTextLayout();
+      if (remoteLayout) {
+        setLockedLayout(remoteLayout);
+        saveLockedLayout(remoteLayout);
+      }
+
+      await loadFolderImages();
+    };
+
+    initApp();
   }, []);
 
   const loadFolderImages = async () => {
@@ -126,10 +146,12 @@ export default function App() {
     }
   }, [activePageIndex, activePage]);
 
-  // Update layout and synchronize position template across all images
-  const handleUpdateLockedLayout = (newLayout: LockedLayoutConfig) => {
+  // Update layout and synchronize position template across all images (saved to Firebase & local)
+  const handleUpdateLockedLayout = async (newLayout: LockedLayoutConfig) => {
     setLockedLayout(newLayout);
     saveLockedLayout(newLayout);
+    // Persist to Firebase Firestore
+    await saveRemoteTextLayout(newLayout);
 
     setPages((prev) =>
       prev.map((page) => ({
@@ -370,6 +392,16 @@ export default function App() {
         totalPages={pages.length}
         onExportPdf={() => setIsExportModalOpen(true)}
         onOpenGuide={() => setIsGuideModalOpen(true)}
+      />
+
+      {/* 1.5. Mobile Always-Visible Thumbnail Strip (Pastikan Thumbnail Muncul Terlihat di HP) */}
+      <MobileThumbnailBar
+        pages={pages}
+        activePageIndex={activePageIndex}
+        onSelectPage={(index) => {
+          setActivePageIndex(index);
+        }}
+        onAddNewPage={handleAddNewPage}
       />
 
       {/* 2. Main Canvas Workspace: Full Screen Without Clutter */}

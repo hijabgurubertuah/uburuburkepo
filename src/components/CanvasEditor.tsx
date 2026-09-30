@@ -1,14 +1,14 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { 
-  Trash2, 
-  Copy, 
   Sparkles, 
   Upload, 
   Lock, 
   Unlock, 
   Plus, 
   X, 
-  GripHorizontal 
+  GripHorizontal,
+  Bold,
+  Italic
 } from 'lucide-react';
 import { ImagePage, TextAnnotation } from '../types';
 
@@ -360,13 +360,15 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                           e.stopPropagation();
                           setEditingTextId(ann.id);
                         }}
-                        className={`annotation-item absolute group select-none transition-shadow ${
+                        className={`annotation-item absolute group select-none transition-all rounded-xs ${
                           isSelected
                             ? 'ring-2 ring-cyan-500 ring-offset-1 ring-offset-black/40 shadow-xl'
-                            : 'hover:ring-1 hover:ring-cyan-400/50'
+                            : !ann.text
+                            ? 'border border-dashed border-slate-300/80 hover:border-cyan-400 bg-cyan-50/5'
+                            : 'border border-transparent hover:border-dashed hover:border-cyan-400/50'
                         } ${ann.locked ? 'cursor-default' : 'cursor-move'}`}
                       >
-                        {/* Floating Toolbar: Selalu berada DI ATAS kolom teks (-top-9) & langsung bisa ditarik/didrag untuk memindahkan posisi */}
+                        {/* Floating Toolbar: Semitransparan, Ringkas (Font, Bold, Italic, Kunci) */}
                         {isSelected && (
                           <div 
                             onPointerDown={(e) => {
@@ -374,86 +376,88 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                                 startDragAnnotation(e, ann, index);
                               }
                             }}
-                            className={`absolute left-0 -top-9 bg-slate-900/95 border border-cyan-500/70 shadow-2xl rounded-lg py-1 px-2 flex items-center gap-1.5 z-50 text-[11px] text-white backdrop-blur-md select-none whitespace-nowrap ${
-                              ann.locked ? 'cursor-default' : 'cursor-move hover:bg-slate-850'
+                            className={`absolute left-0 -top-8 bg-slate-900/80 hover:bg-slate-900/95 border border-cyan-500/40 shadow-xl rounded-lg py-0.5 px-1.5 flex items-center gap-1.5 z-50 text-[11px] text-white backdrop-blur-md select-none whitespace-nowrap opacity-90 hover:opacity-100 transition-opacity ${
+                              ann.locked ? 'cursor-default' : 'cursor-move'
                             }`}
                             title={ann.locked ? 'Posisi Terkunci' : 'Klik & tahan area menu ini untuk menyeret / menggeser teks'}
                           >
-                            {/* Koordinat Posisi */}
-                            <span className="font-mono text-[10px] text-cyan-300 font-bold px-0.5">
-                              X:{ann.x}% Y:{ann.y}%
-                            </span>
-
-                            <div className="h-3 w-px bg-slate-700" />
-
-                            {/* Ukuran Kolom (Lebar) */}
+                            {/* Ukuran Font Khusus Kolom Ini */}
                             <div 
                               onPointerDown={(e) => e.stopPropagation()}
-                              className="flex items-center gap-1 bg-slate-950/80 px-1.5 py-0.5 rounded border border-slate-800"
-                              title="Ukuran Lebar Kolom Teks"
+                              className="flex items-center gap-1 bg-slate-950/70 px-1 py-0.5 rounded border border-slate-700/60"
+                              title="Ukuran Font Kolom Ini"
                             >
-                              <span className="text-[10px] text-slate-400 font-medium">L:</span>
                               <button
                                 type="button"
-                                onClick={() => onUpdateAnnotation(ann.id, { width: Math.max(10, (ann.width || 62) - 2) })}
+                                onClick={() => onUpdateAnnotation(ann.id, { fontSize: Math.max(1, (ann.fontSize || 13) - 1) })}
                                 className="w-4 h-4 rounded bg-slate-800 hover:bg-cyan-600 text-white text-[10px] font-bold flex items-center justify-center transition cursor-pointer"
-                                title="Perkecil Lebar Kolom (-2%)"
+                                title="Kurang Ukuran Font (-1px)"
                               >
                                 -
                               </button>
-                              <span className="font-mono text-[10px] text-amber-300 font-bold">
-                                {ann.width || 62}%
+                              <span className="font-mono text-[10px] text-cyan-300 font-bold min-w-[20px] text-center">
+                                {ann.fontSize || (typeof window !== 'undefined' && window.innerWidth < 640 ? 5 : 13)}
                               </span>
                               <button
                                 type="button"
-                                onClick={() => onUpdateAnnotation(ann.id, { width: Math.min(100, (ann.width || 62) + 2) })}
+                                onClick={() => onUpdateAnnotation(ann.id, { fontSize: Math.min(60, (ann.fontSize || 13) + 1) })}
                                 className="w-4 h-4 rounded bg-slate-800 hover:bg-cyan-600 text-white text-[10px] font-bold flex items-center justify-center transition cursor-pointer"
-                                title="Perbesar Lebar Kolom (+2%)"
+                                title="Tambah Ukuran Font (+1px)"
                               >
                                 +
                               </button>
                             </div>
 
-                            <div className="h-3 w-px bg-slate-700" />
+                            <div className="h-3 w-px bg-slate-700/80" />
+
+                            {/* Tombol Bold (Tebal) */}
+                            <button
+                              type="button"
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onClick={() => onUpdateAnnotation(ann.id, { fontWeight: ann.fontWeight === 'bold' ? 'normal' : 'bold' })}
+                              className={`p-1 rounded transition cursor-pointer flex items-center justify-center ${
+                                ann.fontWeight === 'bold' 
+                                  ? 'bg-cyan-500/30 text-cyan-300 shadow-xs' 
+                                  : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+                              }`}
+                              title={ann.fontWeight === 'bold' ? 'Nonaktifkan Tebal' : 'Tebalkan Teks (Bold)'}
+                              aria-label="Tebal"
+                            >
+                              <Bold className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Tombol Italic (Miring) */}
+                            <button
+                              type="button"
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onClick={() => onUpdateAnnotation(ann.id, { fontStyle: ann.fontStyle === 'italic' ? 'normal' : 'italic' })}
+                              className={`p-1 rounded transition cursor-pointer flex items-center justify-center ${
+                                ann.fontStyle === 'italic' 
+                                  ? 'bg-cyan-500/30 text-cyan-300 shadow-xs' 
+                                  : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+                              }`}
+                              title={ann.fontStyle === 'italic' ? 'Nonaktifkan Miring' : 'Miringkan Teks (Italic)'}
+                              aria-label="Miring"
+                            >
+                              <Italic className="w-3.5 h-3.5" />
+                            </button>
+
+                            <div className="h-3 w-px bg-slate-700/80" />
                             
-                            {/* Tombol Kunci / Buka Kunci (Icon Saja) */}
+                            {/* Tombol Kunci Posisi */}
                             <button
                               type="button"
                               onPointerDown={(e) => e.stopPropagation()}
                               onClick={() => onUpdateAnnotation(ann.id, { locked: !ann.locked })}
-                              className={`p-1.5 rounded transition cursor-pointer flex items-center justify-center ${
+                              className={`p-1 rounded transition cursor-pointer flex items-center justify-center ${
                                 ann.locked 
                                   ? 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30' 
-                                  : 'text-slate-300 hover:text-amber-400 hover:bg-slate-800'
+                                  : 'text-slate-300 hover:text-amber-400 hover:bg-slate-800/80'
                               }`}
-                              title={ann.locked ? 'Buka Kunci Posisi' : 'Kunci Posisi Teks'}
+                              title={ann.locked ? 'Posisi Terkunci (Klik untuk Buka Kunci)' : 'Kunci Posisi Teks'}
                               aria-label={ann.locked ? 'Buka Kunci' : 'Kunci Posisi'}
                             >
-                              {ann.locked ? <Unlock className="w-3.5 h-3.5 text-amber-400" /> : <Lock className="w-3.5 h-3.5" />}
-                            </button>
-
-                            {/* Tombol Duplikat / Kopi (Icon Saja) */}
-                            <button
-                              type="button"
-                              onPointerDown={(e) => e.stopPropagation()}
-                              onClick={() => onDuplicateAnnotation(ann.id)}
-                              className="p-1.5 rounded text-slate-300 hover:text-cyan-300 hover:bg-slate-800 transition cursor-pointer flex items-center justify-center"
-                              title="Duplikat / Salin Teks"
-                              aria-label="Salin Teks"
-                            >
-                              <Copy className="w-3.5 h-3.5 text-cyan-400" />
-                            </button>
-
-                            {/* Tombol Hapus (Icon Saja) */}
-                            <button
-                              type="button"
-                              onPointerDown={(e) => e.stopPropagation()}
-                              onClick={() => onDeleteAnnotation(ann.id)}
-                              className="p-1.5 rounded text-slate-300 hover:text-rose-400 hover:bg-rose-950/40 transition cursor-pointer flex items-center justify-center"
-                              title="Hapus Kolom Teks"
-                              aria-label="Hapus Kolom Teks"
-                            >
-                              <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                              {ann.locked ? <Lock className="w-3.5 h-3.5 text-amber-400" /> : <Unlock className="w-3.5 h-3.5 text-slate-300" />}
                             </button>
                           </div>
                         )}
@@ -508,13 +512,14 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                                   const calcLineHeight = ann.lineHeight ? `${ann.lineHeight}` : '1.6';
                                   const customOffset = ann.lineOffsets && ann.lineOffsets[lineIdx] !== undefined ? ann.lineOffsets[lineIdx] : 0;
                                   const isPlaceholder = lineText === 'Isi teks disini';
+                                  const baseFontSize = ann.fontSize || (typeof window !== 'undefined' && window.innerWidth < 640 ? 6 : 13);
 
                                   return (
                                     <div
                                       key={`line_block_${lineIdx}`}
                                       style={{
                                         lineHeight: calcLineHeight,
-                                        minHeight: `${Math.round((ann.fontSize || 13) * parseFloat(calcLineHeight))}px`,
+                                        minHeight: `${Math.round(baseFontSize * parseFloat(calcLineHeight))}px`,
                                         marginTop: customOffset ? `${customOffset}px` : undefined,
                                         wordBreak: 'break-word',
                                       }}
@@ -528,7 +533,9 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                                   );
                                 })
                               ) : (
-                                <span className="text-slate-400 italic text-xs">Isi teks disini</span>
+                                <span className="text-slate-300 italic text-[11px] select-none block py-0.5">
+                                  Kolom {page.annotations.indexOf(ann) + 1}
+                                </span>
                               )}
                             </div>
                           )}

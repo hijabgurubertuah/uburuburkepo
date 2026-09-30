@@ -13,9 +13,13 @@ import {
   PRELOADED_FOLDER_FILES
 } from './utils/folderService';
 import { 
+  DEFAULT_LOCKED_LAYOUT,
+  DEFAULT_7_COLUMN_POSITIONS,
   LockedLayoutConfig, 
   getSavedLockedLayout, 
-  saveLockedLayout 
+  saveLockedLayout,
+  create7DefaultAnnotations,
+  apply7ColumnPositions
 } from './config/lockedLayout';
 import { 
   testFirestoreConnection, 
@@ -29,55 +33,31 @@ const DEFAULT_PLACEHOLDER_TEXT = 'Isi teks disini';
 export const BLANK_PAPER_URL =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1131" viewBox="0 0 1600 1131"><rect width="1600" height="1131" fill="%23ffffff"/><rect x="25" y="25" width="1550" height="1081" fill="none" stroke="%23f1f5f9" stroke-width="2" stroke-dasharray="8 8"/></svg>';
 
-function createAnnotationFromLayout(
-  layout: LockedLayoutConfig,
-  initialText = DEFAULT_PLACEHOLDER_TEXT
-): TextAnnotation {
-  const isMobile = typeof window !== 'undefined' ? window.innerWidth < 640 : false;
-  const initialFontSize = isMobile ? 6 : (layout.fontSize === 18 ? 13 : (layout.fontSize || 13));
-
+const isInitialMobile = typeof window !== 'undefined' ? window.innerWidth < 640 : false;
+const getRandomInitialTemplate = (): DriveFolderFile => {
+  if (PRELOADED_FOLDER_FILES.length > 0) {
+    const idx = Math.floor(Math.random() * PRELOADED_FOLDER_FILES.length);
+    return PRELOADED_FOLDER_FILES[idx];
+  }
   return {
-    id: `ann_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-    text: initialText,
-    x: layout.x,
-    y: layout.y,
-    width: layout.width,
-    fontSize: initialFontSize,
-    fontFamily: '"Plus Jakarta Sans", sans-serif',
-    fontWeight: 'normal',
-    fontStyle: 'normal',
-    textDecoration: 'none',
-    color: '#000000', // Hitam mutlak
-    backgroundColor: 'transparent', // Latar transparan murni
-    backgroundOpacity: 0,
-    borderColor: 'transparent',
-    borderWidth: 0,
-    borderRadius: 0,
-    textAlign: layout.textAlign,
-    padding: 4,
-    lineHeight: layout.lineHeight || 1.6,
-    rotation: 0,
-    opacity: 1,
-    locked: layout.isLocked,
+    id: 'kertas_kosong',
+    name: 'Kertas Kosong',
+    proxyUrl: BLANK_PAPER_URL,
+    directUrl: BLANK_PAPER_URL,
   };
-}
+};
 
-// Default 1 blank paper page on startup
-const defaultLayout = getSavedLockedLayout();
+const initialTemplate = getRandomInitialTemplate();
+
 const DEFAULT_INITIAL_PAGES: ImagePage[] = [
   {
     id: `page_${Date.now()}`,
-    title: 'Halaman 1 (Kertas Kosong)',
-    originalFileName: 'Kertas Kosong',
-    dataUrl: BLANK_PAPER_URL,
+    title: initialTemplate.name,
+    originalFileName: initialTemplate.name,
+    dataUrl: initialTemplate.directUrl || initialTemplate.proxyUrl,
     naturalWidth: 1600,
     naturalHeight: 1131,
-    annotations: [
-      createAnnotationFromLayout(
-        defaultLayout,
-        DEFAULT_PLACEHOLDER_TEXT
-      ),
-    ],
+    annotations: create7DefaultAnnotations(isInitialMobile),
   },
 ];
 
@@ -101,41 +81,20 @@ export default function App() {
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState<boolean>(false);
 
-  // Load folder files and sync remote Firebase layout on mount
+  // Load folder files and ensure all pages always strictly maintain the 7 locked column positions
   useEffect(() => {
-    // 1. Non-blocking Firebase sync
     const isMobile = typeof window !== 'undefined' ? window.innerWidth < 640 : false;
     testFirestoreConnection();
-    fetchRemoteTextLayout().then((remoteLayout) => {
-      if (remoteLayout) {
-        const layoutToUse: LockedLayoutConfig = {
-          ...remoteLayout,
-          fontSize: isMobile ? 6 : (remoteLayout.fontSize === 18 ? 13 : remoteLayout.fontSize),
-        };
-        setLockedLayout(layoutToUse);
-        saveLockedLayout(layoutToUse);
-        // Sync to loaded pages
-        setPages((prev) =>
-          prev.map((page) => ({
-            ...page,
-            annotations: page.annotations.map((ann) => ({
-              ...ann,
-              x: layoutToUse.x,
-              y: layoutToUse.y,
-              width: layoutToUse.width,
-              fontSize: layoutToUse.fontSize,
-              lineHeight: layoutToUse.lineHeight,
-              textAlign: layoutToUse.textAlign,
-              locked: layoutToUse.isLocked,
-              fontFamily: ann.fontFamily || '"Plus Jakarta Sans", sans-serif',
-              color: '#000000',
-            })),
-          }))
-        );
-      }
-    });
+    
+    // Always enforce the 7 exact column positions on startup
+    setPages((prev) =>
+      prev.map((page) => ({
+        ...page,
+        annotations: apply7ColumnPositions(page.annotations, isMobile),
+      }))
+    );
 
-    // 2. Fetch available folder images for template gallery
+    // Fetch available folder images for template gallery
     loadFolderImages();
   }, []);
 
@@ -166,50 +125,84 @@ export default function App() {
   const handleUpdateLockedLayout = async (newLayout: LockedLayoutConfig) => {
     setLockedLayout(newLayout);
     saveLockedLayout(newLayout);
-    // Persist to Firebase Firestore
     await saveRemoteTextLayout(newLayout);
 
+    const isMobile = typeof window !== 'undefined' ? window.innerWidth < 640 : false;
     setPages((prev) =>
       prev.map((page) => ({
         ...page,
-        annotations: page.annotations.map((ann) => ({
+        annotations: apply7ColumnPositions(
+          page.annotations.map((ann) => ({
+            ...ann,
+            fontSize: newLayout.fontSize,
+            lineHeight: newLayout.lineHeight,
+            textAlign: newLayout.textAlign,
+            locked: true,
+          })),
+          isMobile
+        ),
+      }))
+    );
+  };
+
+  // Update all 7 column annotations text based on double-enter separation
+  const handleUpdateCombinedText = (newFullText: string) => {
+    if (!activePage) return;
+    let chunks: string[] = [];
+    if (newFullText === 'Isi teks disini') {
+      chunks = ['Isi teks disini', '', '', '', '', '', ''];
+    } else if (!newFullText) {
+      chunks = ['', '', '', '', '', '', ''];
+    } else {
+      // Split by double Enter (\n\n). Single enter remains within the column text!
+      chunks = newFullText.split(/\r?\n\r?\n/);
+    }
+
+    setPages((prev) =>
+      prev.map((page, idx) => {
+        if (idx !== activePageIndex) return page;
+
+        const isMobile = typeof window !== 'undefined' ? window.innerWidth < 640 : false;
+        // Always strictly enforce 7 column positions
+        const baseAnns = apply7ColumnPositions(page.annotations, isMobile);
+
+        const updatedAnnotations = baseAnns.map((ann, colIdx) => ({
           ...ann,
-          x: newLayout.x,
-          y: newLayout.y,
-          width: newLayout.width,
-          fontSize: newLayout.fontSize,
-          lineHeight: newLayout.lineHeight,
-          textAlign: newLayout.textAlign,
-          locked: newLayout.isLocked,
+          text: chunks[colIdx] !== undefined ? chunks[colIdx] : '',
           color: '#000000',
           backgroundColor: 'transparent',
-        })),
-      }))
+        }));
+
+        return {
+          ...page,
+          annotations: updatedAnnotations,
+        };
+      })
+    );
+  };
+
+  // Update properties across all 7 column annotations (fontSize, width, fontFamily, lineHeight, etc.)
+  const handleUpdateAnnotationProps = (updates: Partial<TextAnnotation>) => {
+    if (!activePage) return;
+    setPages((prev) =>
+      prev.map((page, idx) => {
+        if (idx !== activePageIndex) return page;
+        return {
+          ...page,
+          annotations: page.annotations.map((ann) => ({
+            ...ann,
+            ...updates,
+            color: '#000000',
+            backgroundColor: 'transparent',
+          })),
+        };
+      })
     );
   };
 
   // Annotation handlers (each page is completely independent in text)
   const handleUpdateAnnotation = (id: string, updates: Partial<TextAnnotation>) => {
     if (!activePage) return;
-
-    if (
-      updates.x !== undefined || 
-      updates.y !== undefined || 
-      updates.width !== undefined || 
-      updates.fontSize !== undefined || 
-      updates.lineHeight !== undefined
-    ) {
-      const updatedLayout: LockedLayoutConfig = {
-        ...lockedLayout,
-        x: updates.x !== undefined ? updates.x : lockedLayout.x,
-        y: updates.y !== undefined ? updates.y : lockedLayout.y,
-        width: updates.width !== undefined ? updates.width : lockedLayout.width,
-        fontSize: updates.fontSize !== undefined ? updates.fontSize : lockedLayout.fontSize,
-        lineHeight: updates.lineHeight !== undefined ? updates.lineHeight : lockedLayout.lineHeight,
-      };
-      setLockedLayout(updatedLayout);
-      saveLockedLayout(updatedLayout);
-    }
 
     setPages((prev) =>
       prev.map((page, idx) => {
@@ -277,6 +270,7 @@ export default function App() {
 
   const handleSelectTemplate = (template: DriveFolderFile) => {
     const templateImgUrl = template.directUrl || template.proxyUrl;
+    const isMobile = typeof window !== 'undefined' ? window.innerWidth < 640 : false;
     setPages((prev) =>
       prev.map((page, idx) => {
         if (idx !== activePageIndex) return page;
@@ -285,12 +279,14 @@ export default function App() {
           title: template.name,
           originalFileName: template.name,
           dataUrl: templateImgUrl,
+          annotations: apply7ColumnPositions(page.annotations, isMobile),
         };
       })
     );
   };
 
   const handleUploadCustomImage = (file: File) => {
+    const isMobile = typeof window !== 'undefined' ? window.innerWidth < 640 : false;
     const reader = new FileReader();
     reader.onload = (e) => {
       const dataUrl = e.target?.result as string;
@@ -314,6 +310,7 @@ export default function App() {
               dataUrl,
               naturalWidth: img.naturalWidth || page.naturalWidth,
               naturalHeight: img.naturalHeight || page.naturalHeight,
+              annotations: apply7ColumnPositions(page.annotations, isMobile),
             };
           })
         );
@@ -323,9 +320,10 @@ export default function App() {
     reader.readAsDataURL(file);
   };
 
-  // Directly add new page on top (di atasnya), so completed ones stay below (di bawahnya)
+  // Directly add new page on top with 7 default columns
   const handleAddNewPage = () => {
     const newPageNum = pages.length + 1;
+    const isMobile = typeof window !== 'undefined' ? window.innerWidth < 640 : false;
 
     const newPage: ImagePage = {
       id: `page_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -334,22 +332,18 @@ export default function App() {
       dataUrl: BLANK_PAPER_URL,
       naturalWidth: 1600,
       naturalHeight: 1131,
-      annotations: [
-        createAnnotationFromLayout(
-          lockedLayout,
-          '' // Empty, ready for immediate 7-line paste!
-        ),
-      ],
+      annotations: create7DefaultAnnotations(isMobile).map((ann, idx) => ({
+        ...ann,
+        text: '', // Empty ready for new input
+      })),
     };
 
-    // Prepend to top: "tambahkan saja di halaman editor di atasnya, jadi yang sudah selesai berada di bawahnya."
     setPages((prev) => [newPage, ...prev]);
     setActivePageIndex(0);
     if (newPage.annotations[0]) {
       setSelectedAnnotationId(newPage.annotations[0].id);
     }
 
-    // Automatically open text input sidebar so user can immediately paste!
     setIsTextSidebarOpen(true);
     setIsThumbnailSidebarOpen(false);
   };
@@ -453,19 +447,17 @@ export default function App() {
           onDuplicatePage={handleDuplicatePage}
         />
 
-        {/* Sidebar 2 (Tersembunyi): Kolom Input Teks 7 Baris & Pengaturan */}
+        {/* Sidebar 2 (Tersembunyi): Kolom Input Teks 7 Kolom & Pengaturan */}
         <TextInputSidebar
           isOpen={isTextSidebarOpen}
           onClose={() => setIsTextSidebarOpen(false)}
-          annotation={activeAnnotation}
+          annotations={activePage?.annotations || []}
+          selectedAnnotation={activeAnnotation}
           activeImageName={activePage?.originalFileName || activePage?.title || ''}
           activePageIndex={activePageIndex}
           totalPages={pages.length}
-          onUpdate={(updates) => {
-            if (activeAnnotation) {
-              handleUpdateAnnotation(activeAnnotation.id, updates);
-            }
-          }}
+          onUpdateCombinedText={handleUpdateCombinedText}
+          onUpdateProps={handleUpdateAnnotationProps}
           lockedLayout={lockedLayout}
           onUpdateLockedLayout={handleUpdateLockedLayout}
         />

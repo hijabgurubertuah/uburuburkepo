@@ -11,6 +11,7 @@ import {
   FileCheck
 } from 'lucide-react';
 import { ImagePage } from '../types';
+import { UburUburLogo } from './UburUburLogo';
 
 interface ThumbnailSidebarProps {
   pages: ImagePage[];
@@ -41,14 +42,14 @@ export const ThumbnailSidebar: React.FC<ThumbnailSidebarProps> = ({
       {/* Sidebar Header */}
       <div className="p-3 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Layers className="w-4 h-4 text-indigo-400" />
+          <UburUburLogo className="w-5 h-5" size={20} />
           <span className="text-xs font-semibold text-slate-200">
             Daftar Halaman ({pages.length})
           </span>
         </div>
         <button
           onClick={onAddNewPage}
-          className="p-1 rounded bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 transition text-xs flex items-center gap-1 px-2"
+          className="p-1 rounded bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 transition text-xs flex items-center gap-1 px-2"
           title="Tambah Halaman / Gambar"
         >
           <Plus className="w-3.5 h-3.5" />

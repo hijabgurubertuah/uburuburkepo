@@ -52,11 +52,8 @@ export const DriveFolderSidebar: React.FC<DriveFolderSidebarProps> = ({
               </div>
               <div>
                 <h2 className="text-xs font-bold text-white tracking-tight">
-                  Pilih Gambar Dokumen
+                  Pilih Latar Kanvas Aktif
                 </h2>
-                <p className="text-[10px] text-cyan-300 font-medium">
-                  🎯 Target: Halaman #{activePageIndex + 1} dari {pages.length}
-                </p>
               </div>
             </div>
 

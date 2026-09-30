@@ -9,6 +9,7 @@ import {
   Layers, 
   Plus
 } from 'lucide-react';
+import { UburUburLogo } from './UburUburLogo';
 
 interface NavbarProps {
   totalPages: number;
@@ -35,20 +36,20 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header className="h-16 border-b border-slate-800 bg-slate-900/90 backdrop-blur-md px-4 flex items-center justify-between z-30 select-none">
       {/* Brand & Title */}
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-blue-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white font-bold">
-          <FileText className="w-5 h-5 text-white" />
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-950 via-slate-900 to-indigo-950 border border-cyan-500/30 flex items-center justify-center shadow-lg shadow-cyan-500/10">
+          <UburUburLogo className="w-8 h-8" size={32} />
         </div>
         <div>
           <div className="flex items-center gap-2">
             <h1 className="font-bold text-base md:text-lg text-white tracking-tight">
-              DocuText <span className="text-cyan-400">Studio</span>
+              Ubur Ubur <span className="text-cyan-400">Kepo</span>
             </h1>
-            <span className="text-[10px] font-semibold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full hidden sm:inline-block">
-              PDF & Gambar
+            <span className="text-[10px] font-semibold tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded-full hidden sm:inline-block">
+              Editor Teks Kolom
             </span>
           </div>
           <p className="text-xs text-slate-400 hidden md:block">
-            Tambah teks, atur posisi & ukuran kustom, ekspor ke PDF
+            Atur teks 7 kolom pada dokumen dan ekspor ke PDF
           </p>
         </div>
       </div>

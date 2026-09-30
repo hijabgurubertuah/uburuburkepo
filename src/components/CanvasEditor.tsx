@@ -2,14 +2,13 @@ import React, { useRef, useState, useEffect } from 'react';
 import { 
   Trash2, 
   Copy, 
-  Sparkles,
-  Upload,
-  Lock,
-  Plus,
-  CheckCircle,
-  FileSpreadsheet,
-  X,
-  AlertTriangle
+  Sparkles, 
+  Upload, 
+  Lock, 
+  Unlock, 
+  Plus, 
+  X, 
+  GripHorizontal 
 } from 'lucide-react';
 import { ImagePage, TextAnnotation } from '../types';
 
@@ -53,109 +52,145 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
   onUpdateAnnotation,
   onDeleteAnnotation,
   onDuplicateAnnotation,
-  onUploadClick,
-  onDriveImportClick,
   onLoadSample,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const activeImageRef = useRef<HTMLImageElement>(null);
-
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [pageToDeleteIndex, setPageToDeleteIndex] = useState<number | null>(null);
 
-  // Dragging state for annotations
-  const [dragState, setDragState] = useState<{
-    annId: string;
-    startX: number;
-    startY: number;
-    initialX: number;
-    initialY: number;
-    containerRect: DOMRect;
-  } | null>(null);
-
-  // Resizing state for annotation box width
-  const [resizeState, setResizeState] = useState<{
-    annId: string;
-    startX: number;
-    initialWidth: number;
-    containerRect: DOMRect;
-  } | null>(null);
-
-  // Handle pointer down on an annotation for dragging
-  const handleAnnotationPointerDown = (
+  // Global smooth dragging handler via window events to prevent getting stuck
+  const startDragAnnotation = (
     e: React.PointerEvent,
     ann: TextAnnotation,
-    pageIndex: number,
-    imgElement: HTMLImageElement | null
+    pageIndex: number
   ) => {
     e.stopPropagation();
     onSelectPage(pageIndex);
     onSelectAnnotation(ann.id);
 
-    if (ann.locked || !imgElement) return;
+    if (ann.locked) return;
 
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    // Find the paper sheet container element
+    const sheetEl = document.getElementById(`doc-sheet-${pageIndex}`);
+    if (!sheetEl) return;
 
-    const rect = imgElement.getBoundingClientRect();
-    setDragState({
-      annId: ann.id,
-      startX: e.clientX,
-      startY: e.clientY,
-      initialX: ann.x,
-      initialY: ann.y,
-      containerRect: rect,
-    });
-  };
+    const sheetRect = sheetEl.getBoundingClientRect();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const initialX = ann.x;
+    const initialY = ann.y;
 
-  // Handle pointer move for dragging
-  const handleAnnotationPointerMove = (e: React.PointerEvent) => {
-    if (dragState) {
-      const { containerRect, initialX, initialY, startX, startY, annId } = dragState;
-      const deltaXPx = e.clientX - startX;
-      const deltaYPx = e.clientY - startY;
+    const onPointerMove = (moveEv: PointerEvent) => {
+      moveEv.preventDefault();
+      const deltaXPx = moveEv.clientX - startX;
+      const deltaYPx = moveEv.clientY - startY;
 
-      const deltaXPercent = (deltaXPx / containerRect.width) * 100;
-      const deltaYPercent = (deltaYPx / containerRect.height) * 100;
+      const deltaXPercent = (deltaXPx / sheetRect.width) * 100;
+      const deltaYPercent = (deltaYPx / sheetRect.height) * 100;
 
       let newX = initialX + deltaXPercent;
       let newY = initialY + deltaYPercent;
 
-      newX = Math.max(0, Math.min(96, newX));
-      newY = Math.max(0, Math.min(96, newY));
+      // Allow full unrestricted dragging anywhere across and far outside the paper
+      newX = Math.max(-100, Math.min(200, newX));
+      newY = Math.max(-100, Math.min(200, newY));
 
-      onUpdateAnnotation(annId, {
+      onUpdateAnnotation(ann.id, {
         x: Math.round(newX * 10) / 10,
         y: Math.round(newY * 10) / 10,
       });
-    } else if (resizeState) {
-      const { containerRect, initialWidth, startX, annId } = resizeState;
-      const deltaXPx = e.clientX - startX;
-      const deltaXPercent = (deltaXPx / containerRect.width) * 100;
+    };
+
+    const onPointerUp = () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
+    };
+
+    window.addEventListener('pointermove', onPointerMove, { passive: false });
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
+  };
+
+  // Global smooth resize handler for text horizontal width
+  const startResizeWidth = (
+    e: React.PointerEvent,
+    ann: TextAnnotation,
+    pageIndex: number
+  ) => {
+    e.stopPropagation();
+    e.preventDefault();
+
+    const sheetEl = document.getElementById(`doc-sheet-${pageIndex}`);
+    if (!sheetEl) return;
+
+    const sheetRect = sheetEl.getBoundingClientRect();
+    const startX = e.clientX;
+    const initialWidth = ann.width || 62;
+
+    const onResizeMove = (moveEv: PointerEvent) => {
+      moveEv.preventDefault();
+      const deltaXPx = moveEv.clientX - startX;
+      const deltaXPercent = (deltaXPx / sheetRect.width) * 100;
 
       let newWidth = initialWidth + deltaXPercent;
-      newWidth = Math.max(10, Math.min(95, newWidth));
+      newWidth = Math.max(10, Math.min(98, newWidth));
 
-      onUpdateAnnotation(annId, {
+      onUpdateAnnotation(ann.id, {
         width: Math.round(newWidth * 10) / 10,
       });
-    }
+    };
+
+    const onResizeUp = () => {
+      window.removeEventListener('pointermove', onResizeMove);
+      window.removeEventListener('pointerup', onResizeUp);
+      window.removeEventListener('pointercancel', onResizeUp);
+    };
+
+    window.addEventListener('pointermove', onResizeMove, { passive: false });
+    window.addEventListener('pointerup', onResizeUp);
+    window.addEventListener('pointercancel', onResizeUp);
   };
 
-  const handleAnnotationPointerUp = (e: React.PointerEvent) => {
-    if (dragState) {
-      try {
-        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-      } catch {
-        // Ignore
-      }
-      setDragState(null);
-    }
-    if (resizeState) {
-      setResizeState(null);
-    }
+  // Global smooth resize handler for text vertical height & line spacing
+  const startResizeHeight = (
+    e: React.PointerEvent,
+    ann: TextAnnotation,
+    pageIndex: number
+  ) => {
+    e.stopPropagation();
+    e.preventDefault();
+
+    const startY = e.clientY;
+    const initialLineHeight = ann.lineHeight || 1.6;
+    const linesCount = (ann.text ? ann.text.split('\n').length : 7) || 7;
+    const fontSize = ann.fontSize || 13;
+
+    const onResizeHeightMove = (moveEv: PointerEvent) => {
+      moveEv.preventDefault();
+      const deltaYPx = moveEv.clientY - startY;
+      const deltaLineHeight = deltaYPx / (linesCount * Math.max(10, fontSize));
+
+      let newLineHeight = initialLineHeight + deltaLineHeight;
+      newLineHeight = Math.max(0.8, Math.min(4.5, newLineHeight));
+
+      onUpdateAnnotation(ann.id, {
+        lineHeight: Math.round(newLineHeight * 100) / 100,
+      });
+    };
+
+    const onResizeHeightUp = () => {
+      window.removeEventListener('pointermove', onResizeHeightMove);
+      window.removeEventListener('pointerup', onResizeHeightUp);
+      window.removeEventListener('pointercancel', onResizeHeightUp);
+    };
+
+    window.addEventListener('pointermove', onResizeHeightMove, { passive: false });
+    window.addEventListener('pointerup', onResizeHeightUp);
+    window.addEventListener('pointercancel', onResizeHeightUp);
   };
 
-  // Keyboard shortcut delete
+  // Keyboard shortcut delete & escape
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
@@ -205,13 +240,11 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
   return (
     <div 
       className="flex-1 flex flex-col bg-slate-950 relative overflow-hidden select-none w-full h-full"
-      onPointerMove={handleAnnotationPointerMove}
-      onPointerUp={handleAnnotationPointerUp}
     >
-      {/* Scrollable Document Feed (Top to Bottom): Jarak Antar Halaman yang Pas */}
+      {/* Scrollable Document Feed (Top to Bottom): Ruang atas & bawah luas agar tombol kontrol di atas kertas tidak terpotong */}
       <div 
         ref={containerRef}
-        className="flex-1 overflow-y-auto px-3 py-4 sm:px-8 space-y-4 sm:space-y-6 bg-[radial-gradient(#1e293b_1.2px,transparent_1.2px)] [background-size:20px_20px]"
+        className="flex-1 overflow-y-auto px-3 pt-8 pb-12 sm:px-8 space-y-8 sm:space-y-10 bg-[radial-gradient(#1e293b_1.2px,transparent_1.2px)] [background-size:20px_20px]"
       >
         {/* Quick Top Button: Tambah Halaman Baru di Atas */}
         <div className="flex items-center justify-center pb-1">
@@ -242,9 +275,10 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                   isSelectedPage ? 'scale-100' : 'opacity-90 hover:opacity-100'
                 }`}
               >
-                {/* Lembar Dokumen */}
+                {/* Lembar Dokumen - overflow-visible agar tombol kontrol selalu terlihat di atas kertas */}
                 <div 
-                  className={`relative w-full max-w-[880px] aspect-[297/210] bg-white rounded-[2px] overflow-hidden transition-all ${
+                  id={`doc-sheet-${index}`}
+                  className={`document-page-sheet relative w-full max-w-[880px] aspect-[297/210] bg-white rounded-[2px] transition-all overflow-visible ${
                     isSelectedPage
                       ? 'ring-2 ring-cyan-500 shadow-[0_16px_36px_rgba(0,0,0,0.65)] ring-offset-2 ring-offset-slate-950'
                       : 'shadow-[0_8px_24px_rgba(0,0,0,0.5)] border border-slate-300 hover:ring-1 hover:ring-slate-600'
@@ -266,24 +300,25 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                     </button>
                   )}
 
-                  {/* Document Image Perfectly Fitted to A4 Sheet */}
-                  <img
-                    ref={isSelectedPage ? activeImageRef : undefined}
-                    src={page.dataUrl}
-                    alt={page.title}
-                    className="w-full h-full object-fill select-none pointer-events-none"
-                    draggable={false}
-                    loading="eager"
-                    onError={(e) => {
-                      const target = e.currentTarget;
-                      const rawId = page.id.replace('page_', '');
-                      if (rawId && !target.src.includes('googleusercontent')) {
-                        target.src = `https://lh3.googleusercontent.com/d/${rawId}`;
-                      } else if (rawId && target.src.includes('googleusercontent')) {
-                        target.src = `/api/drive-image?id=${rawId}`;
-                      }
-                    }}
-                  />
+                  {/* Document Image Fitted to Sheet */}
+                  <div className="absolute inset-0 overflow-hidden rounded-[2px] pointer-events-none">
+                    <img
+                      src={page.dataUrl}
+                      alt={page.title}
+                      className="w-full h-full object-fill select-none pointer-events-none"
+                      draggable={false}
+                      loading="eager"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        const rawId = page.id.replace('page_', '');
+                        if (rawId && !target.src.includes('googleusercontent')) {
+                          target.src = `https://lh3.googleusercontent.com/d/${rawId}`;
+                        } else if (rawId && target.src.includes('googleusercontent')) {
+                          target.src = `/api/drive-image?id=${rawId}`;
+                        }
+                      }}
+                    />
+                  </div>
 
                   {/* Annotations Layer for this specific A4 sheet */}
                   {page.annotations.map((ann) => {
@@ -297,15 +332,14 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                           left: `${ann.x}%`,
                           top: `${ann.y}%`,
                           width: ann.width ? `${ann.width}%` : 'auto',
-                          minWidth: '40px',
+                          minWidth: '60px',
                           transform: ann.rotation ? `rotate(${ann.rotation}deg)` : undefined,
                           transformOrigin: 'center center',
                           opacity: ann.opacity ?? 1,
-                          zIndex: isSelected ? 30 : 10,
+                          zIndex: isSelected ? 40 : 10,
+                          touchAction: 'none',
                         }}
-                        onPointerDown={(e) => 
-                          handleAnnotationPointerDown(e, ann, index, isSelectedPage ? activeImageRef.current : null)
-                        }
+                        onPointerDown={(e) => startDragAnnotation(e, ann, index)}
                         onClick={(e) => {
                           e.stopPropagation();
                           onSelectPage(index);
@@ -317,14 +351,83 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                         }}
                         className={`annotation-item absolute group select-none transition-shadow ${
                           isSelected
-                            ? 'ring-1.5 ring-cyan-500 ring-offset-1 ring-offset-black/40 shadow-xl'
+                            ? 'ring-2 ring-cyan-500 ring-offset-1 ring-offset-black/40 shadow-xl'
                             : 'hover:ring-1 hover:ring-cyan-400/50'
                         } ${ann.locked ? 'cursor-default' : 'cursor-move'}`}
                       >
+                        {/* Floating Toolbar: Selalu berada DI ATAS kolom teks (-top-9) & langsung bisa ditarik/didrag untuk memindahkan posisi */}
+                        {isSelected && (
+                          <div 
+                            onPointerDown={(e) => {
+                              if (!ann.locked) {
+                                startDragAnnotation(e, ann, index);
+                              }
+                            }}
+                            className={`absolute left-0 -top-9 bg-slate-900/95 border border-cyan-500/70 shadow-2xl rounded-lg py-1 px-2.5 flex items-center gap-2 z-50 text-[11px] text-white backdrop-blur-md select-none whitespace-nowrap ${
+                              ann.locked ? 'cursor-default' : 'cursor-move hover:bg-slate-850'
+                            }`}
+                            title={ann.locked ? 'Posisi Terkunci' : 'Klik & tahan area menu ini untuk menyeret / menggeser teks'}
+                          >
+                            {/* Koordinat / Status */}
+                            {ann.locked ? (
+                              <span className="font-mono text-[10px] text-amber-300 flex items-center gap-1 font-semibold">
+                                <Lock className="w-3 h-3 text-amber-400" /> Terkunci
+                              </span>
+                            ) : (
+                              <span className="font-mono text-[10px] text-cyan-300 font-bold">
+                                X:{ann.x}% Y:{ann.y}%
+                              </span>
+                            )}
+
+                            <div className="h-3 w-px bg-slate-700" />
+                            
+                            {/* Tombol Kunci / Buka Kunci */}
+                            <button
+                              type="button"
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onClick={() => onUpdateAnnotation(ann.id, { locked: !ann.locked })}
+                              className={`p-1 rounded flex items-center gap-1 text-[10px] transition cursor-pointer ${
+                                ann.locked 
+                                  ? 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30' 
+                                  : 'text-slate-300 hover:text-amber-400 hover:bg-slate-800'
+                              }`}
+                              title={ann.locked ? 'Buka Kunci Posisi' : 'Kunci Posisi Teks'}
+                            >
+                              {ann.locked ? <Unlock className="w-3 h-3 text-amber-400" /> : <Lock className="w-3 h-3" />}
+                              <span>{ann.locked ? 'Buka' : 'Kunci'}</span>
+                            </button>
+
+                            {/* Tombol Duplikat / Kopi */}
+                            <button
+                              type="button"
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onClick={() => onDuplicateAnnotation(ann.id)}
+                              className="p-1 rounded text-slate-300 hover:text-cyan-300 hover:bg-slate-800 flex items-center gap-1 text-[10px] transition cursor-pointer"
+                              title="Duplikat / Salin Teks"
+                            >
+                              <Copy className="w-3 h-3 text-cyan-400" />
+                              <span>Kopi</span>
+                            </button>
+
+                            {/* Tombol Hapus */}
+                            <button
+                              type="button"
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onClick={() => onDeleteAnnotation(ann.id)}
+                              className="p-1 rounded text-slate-300 hover:text-rose-400 hover:bg-rose-950/40 flex items-center gap-1 text-[10px] transition cursor-pointer"
+                              title="Hapus Kolom Teks"
+                            >
+                              <Trash2 className="w-3 h-3 text-rose-400" />
+                              <span>Hapus</span>
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Text Container Body */}
                         <div
                           style={{
-                            fontFamily: ann.fontFamily || '"Plus Jakarta Sans", sans-serif',
-                            fontSize: `${ann.fontSize}px`,
+                            fontFamily: ann.fontFamily || '"Comic Sans MS", "Comic Sans", cursive',
+                            fontSize: `${ann.fontSize || 13}px`,
                             fontWeight: ann.fontWeight,
                             fontStyle: ann.fontStyle,
                             textDecoration: ann.textDecoration,
@@ -341,7 +444,7 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                             padding: `${ann.padding}px`,
                             whiteSpace: 'pre-wrap',
                             wordBreak: 'break-word',
-                            lineHeight: ann.lineHeight ? `${ann.lineHeight}` : '1.4',
+                            lineHeight: ann.lineHeight ? `${ann.lineHeight}` : '1.6',
                           }}
                           className="relative text-black"
                         >
@@ -354,71 +457,64 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                                 onUpdateAnnotation(ann.id, { text: e.target.value })
                               }
                               style={{
-                                fontSize: `${ann.fontSize}px`,
+                                fontSize: `${ann.fontSize || 13}px`,
                                 color: ann.color || '#000000',
-                                fontFamily: ann.fontFamily,
-                                lineHeight: ann.lineHeight ? `${ann.lineHeight}` : '1.4',
+                                fontFamily: ann.fontFamily || '"Comic Sans MS", "Comic Sans", cursive',
+                                lineHeight: ann.lineHeight ? `${ann.lineHeight}` : '1.6',
                               }}
                               className="bg-transparent border border-dashed border-cyan-500 outline-none w-full resize-none p-1 rounded font-sans"
                               rows={ann.text.split('\n').length || 1}
                             />
                           ) : (
-                            <span>{ann.text || <span className="text-slate-400 italic text-xs">[Klik sidebar 🆃 untuk menempel 7 baris teks]</span>}</span>
-                          )}
+                            <div className="flex flex-col w-full text-line-blocks">
+                              {ann.text ? (
+                                ann.text.split('\n').map((lineText, lineIdx) => {
+                                  const calcLineHeight = ann.lineHeight ? `${ann.lineHeight}` : '1.6';
+                                  const customOffset = ann.lineOffsets && ann.lineOffsets[lineIdx] !== undefined ? ann.lineOffsets[lineIdx] : 0;
 
-                          {/* Quick Lock / Duplicate Controls when Selected & Unlocked */}
-                          {isSelected && !ann.locked && (
-                            <div 
-                              onPointerDown={(e) => e.stopPropagation()}
-                              className="absolute -top-8 left-0 bg-slate-900/95 border border-cyan-500/50 shadow-lg rounded py-0.5 px-1.5 flex items-center gap-1.5 z-40 text-[10px] text-white backdrop-blur-sm pointer-events-auto"
-                            >
-                              <span className="font-mono text-[10px] text-cyan-300">
-                                X:{ann.x}% Y:{ann.y}%
-                              </span>
-                              <div className="h-2.5 w-px bg-slate-700" />
-                              
-                              <button
-                                onClick={() => onUpdateAnnotation(ann.id, { locked: true })}
-                                className="p-0.5 rounded text-amber-400 hover:text-white"
-                                title="Kunci Posisi"
-                              >
-                                <Lock className="w-3 h-3" />
-                              </button>
-                              <button
-                                onClick={() => onDuplicateAnnotation(ann.id)}
-                                className="p-0.5 rounded text-slate-400 hover:text-cyan-300"
-                                title="Duplikat Teks"
-                              >
-                                <Copy className="w-3 h-3" />
-                              </button>
-                              <button
-                                onClick={() => onDeleteAnnotation(ann.id)}
-                                className="p-0.5 rounded text-slate-400 hover:text-rose-400"
-                                title="Hapus Teks"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
+                                  return (
+                                    <div
+                                      key={`line_block_${lineIdx}`}
+                                      style={{
+                                        lineHeight: calcLineHeight,
+                                        minHeight: `${Math.round((ann.fontSize || 13) * parseFloat(calcLineHeight))}px`,
+                                        marginTop: customOffset ? `${customOffset}px` : undefined,
+                                        wordBreak: 'break-word',
+                                      }}
+                                      className="text-line-item relative transition-colors duration-150 hover:bg-cyan-500/5 rounded-xs"
+                                      data-line-index={lineIdx}
+                                    >
+                                      {lineText !== '' ? lineText : '\u00A0'}
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                <span className="text-slate-400 italic text-xs">[Klik sidebar 🆃 untuk menempel 7 baris teks]</span>
+                              )}
                             </div>
                           )}
                         </div>
 
-                        {/* Resizing Handle on Right Edge when Unlocked */}
+                        {/* 1. Resizing Handle on Right Edge (Ubah Lebar / Width) */}
                         {isSelected && !ann.locked && (
                           <div
-                            onPointerDown={(e) => {
-                              e.stopPropagation();
-                              if (activeImageRef.current) {
-                                setResizeState({
-                                  annId: ann.id,
-                                  startX: e.clientX,
-                                  initialWidth: ann.width || 25,
-                                  containerRect: activeImageRef.current.getBoundingClientRect(),
-                                });
-                              }
-                            }}
-                            className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-6 bg-cyan-500 rounded-sm cursor-ew-resize opacity-80 hover:opacity-100 shadow"
-                            title="Tarik untuk mengubah lebar kolom teks"
-                          />
+                            onPointerDown={(e) => startResizeWidth(e, ann, index)}
+                            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-3.5 h-10 bg-cyan-500 rounded-sm cursor-ew-resize opacity-90 hover:opacity-100 shadow-md flex items-center justify-center transition z-30"
+                            title="Tarik ke kanan / kiri untuk mengubah lebar kolom teks"
+                          >
+                            <GripHorizontal className="w-3.5 h-3.5 text-white rotate-90" />
+                          </div>
+                        )}
+
+                        {/* 2. Resizing Handle on Bottom Edge (Ubah Tinggi / Jarak Baris / Height) */}
+                        {isSelected && !ann.locked && (
+                          <div
+                            onPointerDown={(e) => startResizeHeight(e, ann, index)}
+                            className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 h-3.5 w-10 bg-cyan-500 rounded-sm cursor-ns-resize opacity-90 hover:opacity-100 shadow-md flex items-center justify-center transition z-30"
+                            title="Tarik ke bawah / atas untuk mengatur jarak baris dan tinggi teks"
+                          >
+                            <GripHorizontal className="w-3.5 h-3.5 text-white" />
+                          </div>
                         )}
                       </div>
                     );
@@ -437,52 +533,32 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
         })}
       </div>
 
-      {/* Notifikasi Konfirmasi Hapus Halaman */}
+      {/* Confirmation Modal for Deleting a Page */}
       {pageToDeleteIndex !== null && (
-        <div 
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4"
-          onClick={(e) => {
-            e.stopPropagation();
-            setPageToDeleteIndex(null);
-          }}
-        >
-          <div 
-            className="bg-slate-900 border border-slate-700 rounded-2xl max-w-sm w-full p-5 shadow-2xl text-slate-100 animate-in zoom-in-95 duration-150"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-11 h-11 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center justify-center mx-auto mb-3">
-              <Trash2 className="w-5 h-5" />
-            </div>
-            <h3 className="text-sm font-bold text-center text-white mb-1.5">
-              Hapus Halaman {pageToDeleteIndex + 1}?
-            </h3>
-            <p className="text-xs text-slate-400 text-center mb-5 leading-relaxed">
-              {pages.length <= 1 
-                ? 'Dokumen harus memiliki minimal 1 lembar halaman.'
-                : `Apakah Anda yakin ingin menghapus lembar halaman #${pageToDeleteIndex + 1}? Seluruh isi teks di halaman ini akan dihapus.`}
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-5 shadow-2xl animate-in zoom-in-95 duration-150 text-slate-100">
+            <h3 className="text-base font-bold text-white mb-2">Hapus Halaman #{pageToDeleteIndex + 1}?</h3>
+            <p className="text-xs text-slate-400 mb-5 leading-relaxed">
+              Halaman ini beserta seluruh teks yang ada di dalamnya akan dihapus dari dokumen kerja.
             </p>
-            <div className="flex items-center justify-end gap-2.5">
+            <div className="flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setPageToDeleteIndex(null)}
-                className="flex-1 py-2 rounded-xl text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 transition cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 transition"
               >
-                {pages.length <= 1 ? 'Mengerti' : 'Batal'}
+                Batal
               </button>
-              {pages.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (onDeletePage && pageToDeleteIndex !== null) {
-                      onDeletePage(pageToDeleteIndex);
-                    }
-                    setPageToDeleteIndex(null);
-                  }}
-                  className="flex-1 py-2 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 transition shadow-md shadow-rose-600/30 cursor-pointer"
-                >
-                  Ya, Hapus
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  if (onDeletePage) onDeletePage(pageToDeleteIndex);
+                  setPageToDeleteIndex(null);
+                }}
+                className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white transition shadow-md shadow-rose-600/30"
+              >
+                Ya, Hapus
+              </button>
             </div>
           </div>
         </div>

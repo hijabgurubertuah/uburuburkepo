@@ -18,6 +18,7 @@ export interface TextAnnotation {
   textAlign: 'left' | 'center' | 'right';
   padding: number;
   lineHeight?: number; // e.g. 1.4 to 3.5 for aligning with form blanks
+  lineOffsets?: number[]; // optional custom Y offsets per line index for exact positioning
   rotation: number; // 0 to 360
   opacity: number; // 0.1 to 1
   locked?: boolean;

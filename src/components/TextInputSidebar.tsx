@@ -143,7 +143,7 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
                   }`}
                 >
                   {lineCount === 7 && <Check className="w-2.5 h-2.5 text-emerald-400" />}
-                  <span>{lineCount} / 7 Baris</span>
+                  <span>{lineCount} Kolom Teks ({annotation.text ? (annotation.text.match(/\n/g) || []).length : 0} Enter)</span>
                 </span>
               </label>
 
@@ -166,8 +166,8 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
               placeholder="Tinggal tempel (paste) 7 baris teks di sini...&#10;Baris 1&#10;Baris 2&#10;Baris 3&#10;Baris 4&#10;Baris 5&#10;Baris 6&#10;Baris 7"
               className="w-full bg-slate-950 border border-slate-700/80 rounded-xl p-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 font-mono resize-none leading-relaxed"
             />
-            <p className="text-[10px] text-slate-400">
-              *Teks pada masing-masing gambar/halaman dapat berbeda-beda.
+            <p className="text-[10px] text-cyan-400/90 leading-normal">
+              💡 Setiap tombol Enter memisahkan teks menjadi kolom baris terpisah pada pratinjau yang tidak akan saling tumpang tindih.
             </p>
           </div>
 
@@ -198,35 +198,61 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
 
           {/* Stepper Controls: Ukuran Font & Jarak Baris */}
           <div className="grid grid-cols-2 gap-2.5">
-            {/* Ukuran Font Stepper */}
+            {/* Ukuran Font Stepper (Bisa sampai 1 px untuk tampilan HP) */}
             <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 flex flex-col gap-1.5">
-              <span className="text-slate-400 text-[11px] font-medium">Ukuran Font:</span>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 text-[11px] font-medium">Ukuran Font:</span>
+                <span className="text-[10px] text-cyan-400 font-mono font-bold">{annotation.fontSize} px</span>
+              </div>
               <div className="flex items-center justify-between bg-slate-900 rounded-lg p-1 border border-slate-800">
                 <button
                   type="button"
-                  onClick={() => onUpdate({ fontSize: Math.max(10, annotation.fontSize - 1) })}
+                  onClick={() => onUpdate({ fontSize: Math.max(1, (annotation.fontSize || 13) - 1) })}
                   className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:bg-cyan-600 text-slate-200 text-sm font-bold flex items-center justify-center transition cursor-pointer"
-                  title="Kurang Ukuran Font"
+                  title="Kurang Ukuran Font (Bisa sampai 1 px)"
                 >
                   -
                 </button>
-                <span className="font-mono text-cyan-300 font-bold text-xs">
-                  {annotation.fontSize} px
-                </span>
+                <input
+                  type="number"
+                  min={1}
+                  max={60}
+                  value={annotation.fontSize || 13}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    if (!isNaN(val)) {
+                      onUpdate({ fontSize: Math.max(1, Math.min(60, val)) });
+                    }
+                  }}
+                  className="w-12 text-center bg-transparent font-mono text-cyan-300 font-bold text-xs outline-none"
+                />
                 <button
                   type="button"
-                  onClick={() => onUpdate({ fontSize: Math.min(60, annotation.fontSize + 1) })}
+                  onClick={() => onUpdate({ fontSize: Math.min(60, (annotation.fontSize || 13) + 1) })}
                   className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:bg-cyan-600 text-slate-200 text-sm font-bold flex items-center justify-center transition cursor-pointer"
                   title="Tambah Ukuran Font"
                 >
                   +
                 </button>
               </div>
+              {/* Quick slider from 1 to 30 */}
+              <input
+                type="range"
+                min={1}
+                max={30}
+                value={annotation.fontSize || 13}
+                onChange={(e) => onUpdate({ fontSize: parseInt(e.target.value, 10) })}
+                className="w-full accent-cyan-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer mt-0.5"
+                title={`Geser ukuran font: ${annotation.fontSize}px`}
+              />
             </div>
 
             {/* Jarak Baris Stepper */}
             <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 flex flex-col gap-1.5">
-              <span className="text-slate-400 text-[11px] font-medium">Jarak Baris:</span>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 text-[11px] font-medium">Jarak Baris:</span>
+                <span className="text-[10px] text-cyan-400 font-mono font-bold">{currentLineHeight.toFixed(1)}x</span>
+              </div>
               <div className="flex items-center justify-between bg-slate-900 rounded-lg p-1 border border-slate-800">
                 <button
                   type="button"
@@ -248,6 +274,16 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
                   +
                 </button>
               </div>
+              {/* Quick slider for line height from 0.8 to 3.5 */}
+              <input
+                type="range"
+                min={8}
+                max={35}
+                value={Math.round(currentLineHeight * 10)}
+                onChange={(e) => onUpdate({ lineHeight: parseInt(e.target.value, 10) / 10 })}
+                className="w-full accent-cyan-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer mt-0.5"
+                title={`Geser jarak baris: ${currentLineHeight.toFixed(1)}x`}
+              />
             </div>
           </div>
 

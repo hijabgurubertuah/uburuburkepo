@@ -34,6 +34,9 @@ const DEFAULT_7_LINES = [
   'Baris 7: Pengesahan & Tanda Tangan',
 ].join('\n');
 
+export const BLANK_PAPER_URL =
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1131" viewBox="0 0 1600 1131"><rect width="1600" height="1131" fill="%23ffffff"/><rect x="25" y="25" width="1550" height="1081" fill="none" stroke="%23f1f5f9" stroke-width="2" stroke-dasharray="8 8"/></svg>';
+
 function createAnnotationFromLayout(
   layout: LockedLayoutConfig,
   initialText = DEFAULT_7_LINES
@@ -44,8 +47,8 @@ function createAnnotationFromLayout(
     x: layout.x,
     y: layout.y,
     width: layout.width,
-    fontSize: layout.fontSize,
-    fontFamily: '"Plus Jakarta Sans", sans-serif',
+    fontSize: layout.fontSize || 13,
+    fontFamily: '"Comic Sans MS", "Comic Sans", cursive',
     fontWeight: 'normal',
     fontStyle: 'normal',
     textDecoration: 'none',
@@ -57,32 +60,35 @@ function createAnnotationFromLayout(
     borderRadius: 0,
     textAlign: layout.textAlign,
     padding: 4,
-    lineHeight: layout.lineHeight,
+    lineHeight: layout.lineHeight || 1.6,
     rotation: 0,
     opacity: 1,
     locked: layout.isLocked,
   };
 }
 
-// Initial preloaded pages ready immediately on frame 1
+// Default 1 blank paper page on startup
 const defaultLayout = getSavedLockedLayout();
-const DEFAULT_INITIAL_PAGES: ImagePage[] = PRELOADED_FOLDER_FILES.map((f, idx) => ({
-  id: `page_${f.id}`,
-  title: f.name,
-  originalFileName: f.name,
-  dataUrl: f.directUrl || f.proxyUrl,
-  naturalWidth: 1600,
-  naturalHeight: 1131,
-  annotations: [
-    createAnnotationFromLayout(
-      defaultLayout,
-      `Baris 1: Keterangan Dokumen #${idx + 1}\nBaris 2: Nama Lengkap\nBaris 3: Nomor Registrasi\nBaris 4: Tanggal Pelaksanaan\nBaris 5: Uraian Kegiatan\nBaris 6: Keterangan Hasil\nBaris 7: Pengesahan & Tanda Tangan`
-    ),
-  ],
-}));
+const DEFAULT_INITIAL_PAGES: ImagePage[] = [
+  {
+    id: `page_${Date.now()}`,
+    title: 'Halaman 1 (Kertas Kosong)',
+    originalFileName: 'Kertas Kosong',
+    dataUrl: BLANK_PAPER_URL,
+    naturalWidth: 1600,
+    naturalHeight: 1131,
+    annotations: [
+      createAnnotationFromLayout(
+        defaultLayout,
+        DEFAULT_7_LINES
+      ),
+    ],
+  },
+];
 
 export default function App() {
   const [pages, setPages] = useState<ImagePage[]>(DEFAULT_INITIAL_PAGES);
+  const [templates, setTemplates] = useState<DriveFolderFile[]>(PRELOADED_FOLDER_FILES);
   const [activePageIndex, setActivePageIndex] = useState<number>(0);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(
     DEFAULT_INITIAL_PAGES[0]?.annotations[0]?.id || null
@@ -127,7 +133,7 @@ export default function App() {
       }
     });
 
-    // 2. Fetch any extra folder images if updated
+    // 2. Fetch available folder images for template gallery
     loadFolderImages();
   }, []);
 
@@ -135,23 +141,7 @@ export default function App() {
     try {
       const files: DriveFolderFile[] = await fetchDriveFolderFiles(INITIAL_FOLDER_URL);
       if (files.length > 0) {
-        const currentLayout = getSavedLockedLayout();
-        const loadedPages: ImagePage[] = files.map((f, idx) => ({
-          id: `page_${f.id}`,
-          title: f.name,
-          originalFileName: f.name,
-          dataUrl: f.directUrl || f.proxyUrl,
-          naturalWidth: 1600,
-          naturalHeight: 1131,
-          annotations: [
-            createAnnotationFromLayout(
-              currentLayout,
-              `Baris 1: Keterangan Dokumen #${idx + 1}\nBaris 2: Nama Lengkap\nBaris 3: Nomor Registrasi\nBaris 4: Tanggal Pelaksanaan\nBaris 5: Uraian Kegiatan\nBaris 6: Keterangan Hasil\nBaris 7: Pengesahan & Tanda Tangan`
-            ),
-          ],
-        }));
-
-        setPages(loadedPages);
+        setTemplates(files);
       }
     } catch (err) {
       console.warn('Folder files load notice:', err);
@@ -283,18 +273,65 @@ export default function App() {
     setSelectedAnnotationId(newId);
   };
 
-  // Directly add new page on top (di atasnya), so completed ones stay below (di bawahnya) - NO file picker dialog!
+  const handleSelectTemplate = (template: DriveFolderFile) => {
+    const templateImgUrl = template.directUrl || template.proxyUrl;
+    setPages((prev) =>
+      prev.map((page, idx) => {
+        if (idx !== activePageIndex) return page;
+        return {
+          ...page,
+          title: template.name,
+          originalFileName: template.name,
+          dataUrl: templateImgUrl,
+        };
+      })
+    );
+  };
+
+  const handleUploadCustomImage = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const newTemplate: DriveFolderFile = {
+          id: `custom_${Date.now()}`,
+          name: file.name,
+          proxyUrl: dataUrl,
+          directUrl: dataUrl,
+        };
+        setTemplates((prev) => [newTemplate, ...prev.filter((t) => t.name !== file.name)]);
+
+        setPages((prev) =>
+          prev.map((page, idx) => {
+            if (idx !== activePageIndex) return page;
+            return {
+              ...page,
+              title: file.name,
+              originalFileName: file.name,
+              dataUrl,
+              naturalWidth: img.naturalWidth || page.naturalWidth,
+              naturalHeight: img.naturalHeight || page.naturalHeight,
+            };
+          })
+        );
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Directly add new page on top (di atasnya), so completed ones stay below (di bawahnya)
   const handleAddNewPage = () => {
-    const templateImage = activePage?.dataUrl || pages[0]?.dataUrl || '';
     const newPageNum = pages.length + 1;
 
     const newPage: ImagePage = {
       id: `page_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      title: `Halaman Baru (${newPageNum})`,
-      originalFileName: `Halaman_${newPageNum}.jpg`,
-      dataUrl: templateImage,
-      naturalWidth: activePage?.naturalWidth || 1600,
-      naturalHeight: activePage?.naturalHeight || 1131,
+      title: `Halaman ${newPageNum} (Kertas Kosong)`,
+      originalFileName: `Kertas Kosong`,
+      dataUrl: BLANK_PAPER_URL,
+      naturalWidth: 1600,
+      naturalHeight: 1131,
       annotations: [
         createAnnotationFromLayout(
           lockedLayout,
@@ -313,32 +350,6 @@ export default function App() {
     // Automatically open text input sidebar so user can immediately paste!
     setIsTextSidebarOpen(true);
     setIsThumbnailSidebarOpen(false);
-  };
-
-  const handleReplacePageImage = (index: number, file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result as string;
-      const img = new Image();
-      img.onload = () => {
-        setPages((prev) =>
-          prev.map((page, idx) => {
-            if (idx !== index) return page;
-            return {
-              ...page,
-              title: file.name,
-              originalFileName: file.name,
-              dataUrl,
-              naturalWidth: img.naturalWidth || page.naturalWidth,
-              naturalHeight: img.naturalHeight || page.naturalHeight,
-            };
-          })
-        );
-        alert(`Gambar halaman #${index + 1} berhasil diganti dengan "${file.name}".`);
-      };
-      img.src = dataUrl;
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleDeletePage = (index: number) => {
@@ -372,40 +383,46 @@ export default function App() {
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 font-sans selection:bg-cyan-500 selection:text-white relative">
-      {/* 2 Dedicated Floating Trigger Buttons on Left Edge (Height: 30px, Icon Only, No Text) */}
-      <div className="fixed left-0 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-2 pointer-events-auto">
-        {/* Tombol 1: Pemuncul Sidebar Thumbnail (Ikon Hamburger Saja) */}
+      {/* 2 Dedicated Floating Trigger Buttons on Left Edge (Width: 35px, Height: 120px) */}
+      <div className="fixed left-0 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-3 pointer-events-auto">
+        {/* Tombol 1: Pemuncul Sidebar Thumbnail (Ukuran Lebar 35px x Tinggi 120px) */}
         <button
           type="button"
           onClick={() => {
             setIsThumbnailSidebarOpen(!isThumbnailSidebarOpen);
             setIsTextSidebarOpen(false); // Close other sidebar
           }}
-          style={{ height: '30px', minWidth: '16px', width: '22px' }}
-          className={`bg-slate-800/95 hover:bg-slate-700 active:bg-cyan-600 border-r border-t border-b rounded-r-md shadow-xl flex items-center justify-center transition-all cursor-pointer ${
-            isThumbnailSidebarOpen ? 'border-cyan-400 text-cyan-300 ring-1 ring-cyan-500' : 'border-slate-700/80 text-slate-300'
+          style={{ width: '35px', height: '120px' }}
+          className={`bg-slate-900/95 hover:bg-slate-800 active:bg-cyan-600 border-r border-t border-b rounded-r-xl shadow-2xl flex flex-col items-center justify-center py-2 gap-2 transition-all cursor-pointer ${
+            isThumbnailSidebarOpen ? 'border-cyan-400 text-cyan-300 ring-1 ring-cyan-500 bg-slate-800' : 'border-slate-700/80 text-slate-200 hover:border-slate-600'
           }`}
           title="Buka Daftar Gambar (Thumbnail)"
-          aria-label="Menu Thumbnail"
+          aria-label="Menu Daftar Gambar"
         >
-          <Menu className="w-3.5 h-3.5 shrink-0" />
+          <Menu className="w-4 h-4 shrink-0 text-cyan-400" />
+          <span className="text-[11px] font-semibold [writing-mode:vertical-rl] rotate-180 tracking-wide select-none">
+            Gambar
+          </span>
         </button>
 
-        {/* Tombol 2: Pemuncul Sidebar Input Teks (Ikon Type Saja) */}
+        {/* Tombol 2: Pemuncul Sidebar Input Teks (Ukuran Lebar 35px x Tinggi 120px) */}
         <button
           type="button"
           onClick={() => {
             setIsTextSidebarOpen(!isTextSidebarOpen);
             setIsThumbnailSidebarOpen(false); // Close other sidebar
           }}
-          style={{ height: '30px', minWidth: '16px', width: '22px' }}
-          className={`bg-slate-800/95 hover:bg-slate-700 active:bg-cyan-600 border-r border-t border-b rounded-r-md shadow-xl flex items-center justify-center transition-all cursor-pointer ${
-            isTextSidebarOpen ? 'border-cyan-400 text-cyan-300 ring-1 ring-cyan-500' : 'border-slate-700/80 text-slate-300'
+          style={{ width: '35px', height: '120px' }}
+          className={`bg-slate-900/95 hover:bg-slate-800 active:bg-cyan-600 border-r border-t border-b rounded-r-xl shadow-2xl flex flex-col items-center justify-center py-2 gap-2 transition-all cursor-pointer ${
+            isTextSidebarOpen ? 'border-cyan-400 text-cyan-300 ring-1 ring-cyan-500 bg-slate-800' : 'border-slate-700/80 text-slate-200 hover:border-slate-600'
           }`}
           title="Buka Input Teks 7 Baris"
           aria-label="Menu Input Teks"
         >
-          <Type className="w-3.5 h-3.5 shrink-0" />
+          <Type className="w-4 h-4 shrink-0 text-cyan-400" />
+          <span className="text-[11px] font-semibold [writing-mode:vertical-rl] rotate-180 tracking-wide select-none">
+            Input Teks
+          </span>
         </button>
       </div>
 
@@ -421,13 +438,15 @@ export default function App() {
         <DriveFolderSidebar
           isOpen={isThumbnailSidebarOpen}
           onClose={() => setIsThumbnailSidebarOpen(false)}
+          templates={templates}
           pages={pages}
           activePageIndex={activePageIndex}
           onSelectPage={(index) => {
             setActivePageIndex(index);
           }}
+          onSelectTemplate={handleSelectTemplate}
           onAddNewPage={handleAddNewPage}
-          onReplacePageImage={handleReplacePageImage}
+          onUploadCustomImage={handleUploadCustomImage}
           onDeletePage={handleDeletePage}
           onDuplicatePage={handleDuplicatePage}
         />

@@ -222,7 +222,7 @@ export const AdminPositionModal: React.FC<AdminPositionModalProps> = ({
                 <div className="flex items-center justify-between">
                   <button
                     type="button"
-                    onClick={() => setDraftFontSize((prev) => Math.max(10, prev - 1))}
+                    onClick={() => setDraftFontSize((prev) => Math.max(1, prev - 1))}
                     className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-xs font-bold"
                   >
                     -

@@ -131,30 +131,16 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
           {/* Paste Column Section */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="font-semibold text-slate-200 text-xs flex items-center gap-1.5">
-                <span>Kolom Tempel Teks:</span>
-                <span
-                  className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex items-center gap-1 ${
-                    lineCount === 7
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                      : 'bg-slate-800 text-slate-400 border border-slate-700'
-                  }`}
-                >
-                  {lineCount === 7 && <Check className="w-2.5 h-2.5 text-emerald-400" />}
-                  <span>{lineCount} Kolom Teks ({annotation.text ? (annotation.text.match(/\n/g) || []).length : 0} Enter)</span>
-                </span>
-              </label>
-
+          <div className="space-y-2">
+            <div className="flex items-center justify-end">
               <button
                 type="button"
                 onClick={handlePasteFromClipboard}
-                className="text-[10px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 flex items-center gap-1 transition cursor-pointer"
-                title="Tempel teks langsung dari clipboard"
+                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-white border border-slate-700 transition cursor-pointer flex items-center justify-center"
+                title={pasteSuccess ? 'Tersalin dari Clipboard!' : 'Tempel teks dari Clipboard'}
+                aria-label="Tempel Teks"
               >
-                <Clipboard className="w-3 h-3" />
-                <span>{pasteSuccess ? 'Tersalin!' : 'Tombol Tempel'}</span>
+                <Clipboard className="w-4 h-4" />
               </button>
             </div>
 
@@ -166,12 +152,9 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
               placeholder="Isi teks disini (tempel atau ketik teks baru)..."
               className="w-full bg-slate-950 border border-slate-700/80 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-mono resize-none leading-relaxed"
             />
-            <p className="text-[10px] text-cyan-400/90 leading-normal">
-              💡 Setiap tombol Enter memisahkan teks menjadi kolom baris terpisah pada pratinjau yang tidak akan saling tumpang tindih.
-            </p>
           </div>
 
-          {/* Pilihan Font (termasuk Comic Sans MS) */}
+          {/* Pilihan Font */}
           <div className="space-y-1.5 bg-slate-950/60 p-3 rounded-xl border border-slate-800">
             <label className="text-slate-300 font-semibold flex items-center justify-between">
               <span>Pilihan Font:</span>

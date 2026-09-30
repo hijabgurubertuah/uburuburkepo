@@ -1,0 +1,6 @@
+{
+  "name": "DocuText Studio - Editor Teks Gambar & PDF",
+  "description": "Aplikasi penambah teks dan keterangan kustom pada gambar/dokumen dengan posisi presisi, pratinjau instan, dan ekspor multi-halaman PDF.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

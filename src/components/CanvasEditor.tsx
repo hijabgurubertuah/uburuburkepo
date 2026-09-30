@@ -17,6 +17,7 @@ interface CanvasEditorProps {
   activePageIndex: number;
   onSelectPage: (index: number) => void;
   onAddNewPage: () => void;
+  onOpenBackgroundSidebar?: () => void;
   onDeletePage?: (index: number) => void;
   selectedAnnotationId: string | null;
   onSelectAnnotation: (id: string | null) => void;
@@ -46,6 +47,7 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
   activePageIndex,
   onSelectPage,
   onAddNewPage,
+  onOpenBackgroundSidebar,
   onDeletePage,
   selectedAnnotationId,
   onSelectAnnotation,
@@ -239,16 +241,16 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
 
   return (
     <div 
-      className="flex-1 flex flex-col bg-slate-950 relative overflow-hidden select-none w-full h-full"
+      className="flex-1 flex flex-col bg-teal-950 relative overflow-hidden select-none w-full h-full"
       onClick={() => onSelectAnnotation(null)}
     >
       {/* Scrollable Document Feed (Top to Bottom): Ruang atas & bawah luas agar tombol kontrol di atas kertas tidak terpotong */}
       <div 
         ref={containerRef}
         onClick={() => onSelectAnnotation(null)}
-        className="flex-1 overflow-y-auto px-3 pt-8 pb-12 sm:px-8 space-y-8 sm:space-y-10 bg-[radial-gradient(#1e293b_1.2px,transparent_1.2px)] [background-size:20px_20px]"
+        className="flex-1 overflow-y-auto px-3 pt-8 pb-12 sm:px-8 space-y-8 sm:space-y-10 bg-teal-950 bg-[radial-gradient(#115e59_1.2px,transparent_1.2px)] [background-size:20px_20px]"
       >
-        {/* Quick Top Button: Tambah Halaman Baru di Atas */}
+        {/* Quick Top Button: Tambah Halaman Baru */}
         <div className="flex items-center justify-center pb-1">
           <button
             onClick={(e) => {
@@ -256,10 +258,10 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
               onAddNewPage();
             }}
             className="py-2 px-4 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-semibold flex items-center gap-2 shadow-lg shadow-cyan-600/20 transition cursor-pointer hover:scale-102"
-            title="Tambah lembar baru di bagian paling atas"
+            title="Tambah Halaman Baru Kosong & Pilih Latar Kanvas"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Tambah Halaman Baru di Atas</span>
+            <span>Tambah Halaman Baru</span>
           </button>
         </div>
 
@@ -470,7 +472,7 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                             fontWeight: ann.fontWeight,
                             fontStyle: ann.fontStyle,
                             textDecoration: ann.textDecoration,
-                            color: '#000000', // Hitam mutlak
+                            color: ann.color || '#000000',
                             backgroundColor:
                               ann.backgroundColor === 'transparent'
                                 ? 'transparent'
@@ -498,7 +500,7 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
                               }
                               style={{
                                 fontSize: `${ann.fontSize || (typeof window !== 'undefined' && window.innerWidth < 640 ? 6 : 13)}px`,
-                                color: '#000000',
+                                color: ann.color || '#000000',
                                 fontFamily: ann.fontFamily || '"Plus Jakarta Sans", sans-serif',
                                 lineHeight: ann.lineHeight ? `${ann.lineHeight}` : '1.6',
                               }}
@@ -570,13 +572,20 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
 
               {/* Garis pemisah halus tanpa tulisan */}
               {index < pages.length - 1 && (
-                <div className="w-full max-w-4xl flex items-center justify-center py-2 text-slate-700/50 select-none">
-                  <div className="h-px bg-slate-800/60 w-3/4" />
+                <div className="w-full max-w-4xl flex items-center justify-center py-2 text-teal-700/50 select-none">
+                  <div className="h-px bg-teal-800/60 w-3/4" />
                 </div>
               )}
             </React.Fragment>
           );
         })}
+
+        {/* Bottom Attribution Footer */}
+        <div className="pt-8 pb-4 text-center select-none">
+          <span className="text-xs font-semibold text-teal-300/80 tracking-wider">
+            By : Guber Smart
+          </span>
+        </div>
       </div>
 
       {/* Confirmation Modal for Deleting a Page */}

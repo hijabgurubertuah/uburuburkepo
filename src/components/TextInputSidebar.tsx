@@ -2,14 +2,22 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   X, 
   Type, 
-  Clipboard, 
+  Copy, 
   Lock, 
   ChevronDown,
-  Settings
+  Bold,
+  Italic,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
+  CheckCheck,
+  Palette,
+  Check,
+  AlertCircle
 } from 'lucide-react';
 import { TextAnnotation } from '../types';
 import { LockedLayoutConfig } from '../config/lockedLayout';
-import { AdminPositionModal } from './AdminPositionModal';
 import { UburUburLogo } from './UburUburLogo';
 
 interface TextInputSidebarProps {
@@ -22,6 +30,7 @@ interface TextInputSidebarProps {
   totalPages: number;
   onUpdateCombinedText: (newFullText: string) => void;
   onUpdateProps: (updates: Partial<TextAnnotation>) => void;
+  onApplyPropsToAllPages?: (updates: Partial<TextAnnotation>) => void;
   lockedLayout: LockedLayoutConfig;
   onUpdateLockedLayout: (newLayout: LockedLayoutConfig) => void;
 }
@@ -36,6 +45,18 @@ const AVAILABLE_FONTS = [
   { name: 'Georgia', value: 'Georgia, serif' },
 ];
 
+const DARK_FONT_COLORS = [
+  { name: 'Hitam Pekat', hex: '#000000' },
+  { name: 'Merah Gelap', hex: '#881337' },
+  { name: 'Marun Crimson', hex: '#7f1d1d' },
+  { name: 'Biru Gelap', hex: '#1e3a8a' },
+  { name: 'Navy Deep', hex: '#0f172a' },
+  { name: 'Hijau Gelap', hex: '#14532d' },
+  { name: 'Emerald Gelap', hex: '#064e3b' },
+  { name: 'Ungu Gelap', hex: '#581c87' },
+  { name: 'Cokelat Gelap', hex: '#451a03' },
+];
+
 export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
   isOpen,
   onClose,
@@ -46,11 +67,13 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
   totalPages,
   onUpdateCombinedText,
   onUpdateProps,
+  onApplyPropsToAllPages,
   lockedLayout,
   onUpdateLockedLayout,
 }) => {
-  const [pasteSuccess, setPasteSuccess] = useState(false);
-  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [applyAllSuccess, setApplyAllSuccess] = useState(false);
+  const [showConfirmApplyAll, setShowConfirmApplyAll] = useState(false);
 
   // Representative annotation for font/size/lineHeight/width controls
   const representativeAnn = selectedAnnotation || annotations[0] || null;
@@ -181,17 +204,24 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
     }
   };
 
-  const handlePasteFromClipboard = async () => {
+  const handleCopyToClipboard = async () => {
     try {
-      const clipText = await navigator.clipboard.readText();
-      if (clipText) {
-        const parts = clipText.split(/\r?\n\r?\n/).slice(0, 7);
-        emitChunks(parts);
-        setPasteSuccess(true);
-        setTimeout(() => setPasteSuccess(false), 2000);
+      // Salin seluruh isi teks dalam kolom termasuk enternya
+      let lastNonEmptyIndex = -1;
+      for (let i = chunks.length - 1; i >= 0; i--) {
+        if (chunks[i] && chunks[i].trim() !== '') {
+          lastNonEmptyIndex = i;
+          break;
+        }
       }
-    } catch {
-      alert('Silakan tekan Ctrl+V pada kolom teks untuk menempel.');
+      const populatedChunks = lastNonEmptyIndex >= 0 ? chunks.slice(0, lastNonEmptyIndex + 1) : chunks;
+      const textToCopy = populatedChunks.join('\n\n');
+
+      await navigator.clipboard.writeText(textToCopy);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Gagal menyalin teks ke clipboard:', err);
     }
   };
 
@@ -200,6 +230,10 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
   const currentLineHeight = representativeAnn?.lineHeight || 1.2;
   const currentWidth = representativeAnn?.width || 49;
   const currentFontFamily = representativeAnn?.fontFamily || '"Plus Jakarta Sans", sans-serif';
+  const currentFontWeight = representativeAnn?.fontWeight || 'normal';
+  const currentFontStyle = representativeAnn?.fontStyle || 'normal';
+  const currentTextAlign = representativeAnn?.textAlign || 'left';
+  const currentColor = representativeAnn?.color || '#000000';
 
   const handleIncreaseLineHeight = () => {
     const next = Math.min(3.5, Math.round((currentLineHeight + 0.1) * 10) / 10);
@@ -219,9 +253,9 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
       />
 
       {/* Sidebar: Input Teks 7 Kolom */}
-      <aside className="fixed inset-y-0 left-0 z-50 w-80 sm:w-96 bg-slate-900 border-r border-slate-800 shadow-2xl flex flex-col select-none animate-in slide-in-from-left duration-200">
+      <aside className="fixed inset-y-0 left-0 z-50 w-80 sm:w-96 bg-teal-950 border-r border-teal-800 shadow-2xl flex flex-col select-none animate-in slide-in-from-left duration-200">
         {/* Header */}
-        <div className="p-3.5 border-b border-slate-800 bg-slate-900/95 flex items-center justify-between">
+        <div className="p-3.5 border-b border-teal-800 bg-teal-900/95 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <UburUburLogo className="w-8 h-8" size={32} />
             <div>
@@ -278,15 +312,19 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
                 })}
               </div>
 
-              {/* Paste Button */}
+              {/* Copy Button */}
               <button
                 type="button"
-                onClick={handlePasteFromClipboard}
-                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-white border border-slate-700 transition cursor-pointer flex items-center justify-center shadow-sm"
-                title={pasteSuccess ? 'Tersalin dari Clipboard!' : 'Tempel teks dari Clipboard'}
-                aria-label="Tempel Teks"
+                onClick={handleCopyToClipboard}
+                className={`p-1.5 rounded-lg border transition cursor-pointer flex items-center justify-center shadow-sm ${
+                  copySuccess
+                    ? 'bg-emerald-600/30 text-emerald-300 border-emerald-500/50'
+                    : 'bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-white border-slate-700'
+                }`}
+                title={copySuccess ? 'Berhasil Disalin ke Clipboard!' : 'Salin Seluruh Teks dalam Kolom (Termasuk Enter)'}
+                aria-label="Salin Seluruh Teks"
               >
-                <Clipboard className="w-4 h-4" />
+                {copySuccess ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
               </button>
             </div>
 
@@ -361,9 +399,113 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
             </div>
           </div>
 
-          {/* Stepper Controls: Ukuran Font & Jarak Baris */}
+          {/* Format Teks & Penjajaran (Alignment) */}
+          <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-300 font-semibold text-[11px]">Format & Penjajaran Teks:</span>
+              <span className="text-[10px] text-cyan-400 font-mono">
+                {currentFontWeight === 'bold' ? 'Bold ' : ''}{currentFontStyle === 'italic' ? 'Italic ' : ''}({currentTextAlign})
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-lg border border-slate-800">
+              {/* Bold */}
+              <button
+                type="button"
+                onClick={() => onUpdateProps({ fontWeight: currentFontWeight === 'bold' ? 'normal' : 'bold' })}
+                className={`flex-1 py-1.5 rounded flex items-center justify-center transition cursor-pointer text-xs font-bold ${
+                  currentFontWeight === 'bold'
+                    ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-500/50 shadow-xs'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+                title="Tebal (Bold)"
+                aria-label="Tebal"
+              >
+                <Bold className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Italic */}
+              <button
+                type="button"
+                onClick={() => onUpdateProps({ fontStyle: currentFontStyle === 'italic' ? 'normal' : 'italic' })}
+                className={`flex-1 py-1.5 rounded flex items-center justify-center transition cursor-pointer text-xs italic ${
+                  currentFontStyle === 'italic'
+                    ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-500/50 shadow-xs'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+                title="Miring (Italic)"
+                aria-label="Miring"
+              >
+                <Italic className="w-3.5 h-3.5" />
+              </button>
+
+              <div className="h-4 w-px bg-slate-800 my-auto" />
+
+              {/* Align Left (Rata Kiri) */}
+              <button
+                type="button"
+                onClick={() => onUpdateProps({ textAlign: 'left' })}
+                className={`flex-1 py-1.5 rounded flex items-center justify-center transition cursor-pointer ${
+                  currentTextAlign === 'left'
+                    ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-500/50 shadow-xs'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+                title="Rata Kiri"
+                aria-label="Rata Kiri"
+              >
+                <AlignLeft className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Align Center (Rata Tengah) */}
+              <button
+                type="button"
+                onClick={() => onUpdateProps({ textAlign: 'center' })}
+                className={`flex-1 py-1.5 rounded flex items-center justify-center transition cursor-pointer ${
+                  currentTextAlign === 'center'
+                    ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-500/50 shadow-xs'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+                title="Rata Tengah"
+                aria-label="Rata Tengah"
+              >
+                <AlignCenter className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Align Right (Rata Kanan) */}
+              <button
+                type="button"
+                onClick={() => onUpdateProps({ textAlign: 'right' })}
+                className={`flex-1 py-1.5 rounded flex items-center justify-center transition cursor-pointer ${
+                  currentTextAlign === 'right'
+                    ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-500/50 shadow-xs'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+                title="Rata Kanan"
+                aria-label="Rata Kanan"
+              >
+                <AlignRight className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Align Justify (Rata Kanan Kiri) */}
+              <button
+                type="button"
+                onClick={() => onUpdateProps({ textAlign: 'justify' })}
+                className={`flex-1 py-1.5 rounded flex items-center justify-center transition cursor-pointer ${
+                  currentTextAlign === 'justify'
+                    ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-500/50 shadow-xs'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+                title="Rata Kanan Kiri (Justify)"
+                aria-label="Rata Kanan Kiri"
+              >
+                <AlignJustify className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Stepper Controls 2x2 Grid: Ukuran Font, Jarak Baris, Lebar Kolom & Warna Font Gelap */}
           <div className="grid grid-cols-2 gap-2.5">
-            {/* Ukuran Font Stepper */}
+            {/* Box 1: Ukuran Font Stepper */}
             <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 text-[11px] font-medium">Ukuran Font:</span>
@@ -411,7 +553,7 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
               />
             </div>
 
-            {/* Jarak Baris Stepper */}
+            {/* Box 2: Jarak Baris Stepper */}
             <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 text-[11px] font-medium">Jarak Baris:</span>
@@ -448,84 +590,165 @@ export const TextInputSidebar: React.FC<TextInputSidebarProps> = ({
                 title={`Geser jarak baris: ${currentLineHeight.toFixed(1)}x`}
               />
             </div>
-          </div>
 
-          {/* Ukuran Kolom (Lebar Kolom Teks, Default 49%) */}
-          <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400 text-[11px] font-medium">Ukuran Lebar Kolom:</span>
-              <span className="text-[10px] text-amber-300 font-mono font-bold">{currentWidth}%</span>
-            </div>
-            <div className="flex items-center justify-between bg-slate-900 rounded-lg p-1 border border-slate-800">
-              <button
-                type="button"
-                onClick={() => onUpdateProps({ width: Math.max(10, currentWidth - 1) })}
-                className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:bg-cyan-600 text-slate-200 text-sm font-bold flex items-center justify-center transition cursor-pointer"
-                title="Perkecil Ukuran Kolom (-1%)"
-              >
-                -
-              </button>
+            {/* Box 3: Ukuran Lebar Kolom Stepper (Kini berukuran sama dengan font & jarak baris) */}
+            <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 text-[11px] font-medium">Lebar Kolom:</span>
+                <span className="text-[10px] text-amber-300 font-mono font-bold">{currentWidth}%</span>
+              </div>
+              <div className="flex items-center justify-between bg-slate-900 rounded-lg p-1 border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => onUpdateProps({ width: Math.max(10, currentWidth - 1) })}
+                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:bg-cyan-600 text-slate-200 text-sm font-bold flex items-center justify-center transition cursor-pointer"
+                  title="Perkecil Ukuran Kolom (-1%)"
+                >
+                  -
+                </button>
+                <input
+                  type="number"
+                  min={10}
+                  max={100}
+                  value={currentWidth}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    if (!isNaN(val)) {
+                      onUpdateProps({ width: Math.max(10, Math.min(100, val)) });
+                    }
+                  }}
+                  className="w-12 text-center bg-transparent font-mono text-amber-300 font-bold text-xs outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => onUpdateProps({ width: Math.min(100, currentWidth + 1) })}
+                  className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:bg-cyan-600 text-slate-200 text-sm font-bold flex items-center justify-center transition cursor-pointer"
+                  title="Perbesar Ukuran Kolom (+1%)"
+                >
+                  +
+                </button>
+              </div>
               <input
-                type="number"
-                min={10}
+                type="range"
+                min={15}
                 max={100}
                 value={currentWidth}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value, 10);
-                  if (!isNaN(val)) {
-                    onUpdateProps({ width: Math.max(10, Math.min(100, val)) });
-                  }
-                }}
-                className="w-16 text-center bg-transparent font-mono text-amber-300 font-bold text-xs outline-none"
+                onChange={(e) => onUpdateProps({ width: parseInt(e.target.value, 10) })}
+                className="w-full accent-amber-400 h-1.5 bg-slate-800 rounded-lg cursor-pointer mt-0.5"
+                title={`Geser ukuran lebar kolom: ${currentWidth}%`}
               />
-              <button
-                type="button"
-                onClick={() => onUpdateProps({ width: Math.min(100, currentWidth + 1) })}
-                className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 active:bg-cyan-600 text-slate-200 text-sm font-bold flex items-center justify-center transition cursor-pointer"
-                title="Perbesar Ukuran Kolom (+1%)"
-              >
-                +
-              </button>
             </div>
-            <input
-              type="range"
-              min={15}
-              max={100}
-              value={currentWidth}
-              onChange={(e) => onUpdateProps({ width: parseInt(e.target.value, 10) })}
-              className="w-full accent-amber-400 h-1.5 bg-slate-800 rounded-lg cursor-pointer mt-0.5"
-              title={`Geser ukuran lebar kolom: ${currentWidth}%`}
-            />
+
+            {/* Box 4: 9 Pilihan Warna Font Gelap */}
+            <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 flex flex-col justify-between gap-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 text-[11px] font-medium flex items-center gap-1">
+                  <Palette className="w-3 h-3 text-cyan-400" />
+                  <span>Warna Font:</span>
+                </span>
+                <span 
+                  className="w-3 h-3 rounded-full border border-slate-600 shrink-0 shadow-xs" 
+                  style={{ backgroundColor: currentColor }} 
+                  title={`Warna aktif: ${DARK_FONT_COLORS.find(c => c.hex.toLowerCase() === currentColor.toLowerCase())?.name || currentColor}`}
+                />
+              </div>
+
+              {/* Grid 9 Swatches */}
+              <div className="grid grid-cols-5 gap-1.5 items-center justify-items-center bg-slate-900/80 p-1.5 rounded-lg border border-slate-800">
+                {DARK_FONT_COLORS.map((colorItem) => {
+                  const isSelected = currentColor.toLowerCase() === colorItem.hex.toLowerCase();
+                  return (
+                    <button
+                      key={colorItem.hex}
+                      type="button"
+                      onClick={() => onUpdateProps({ color: colorItem.hex })}
+                      className={`w-5 h-5 rounded-full transition-all cursor-pointer flex items-center justify-center relative ${
+                        isSelected 
+                          ? 'ring-2 ring-cyan-400 scale-110 shadow-md shadow-cyan-500/20 z-10' 
+                          : 'hover:scale-110 opacity-85 hover:opacity-100 border border-white/10'
+                      }`}
+                      style={{ backgroundColor: colorItem.hex }}
+                      title={`Pilih Warna: ${colorItem.name}`}
+                      aria-label={`Warna ${colorItem.name}`}
+                    >
+                      {isSelected && (
+                        <Check className="w-3 h-3 text-white drop-shadow-md" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* Footer */}
-        <div className="p-3 border-t border-slate-800 bg-slate-950/80 flex items-center justify-between">
-          <span className="text-[10px] text-slate-500">
-            Pengaturan admin
-          </span>
-
-          <button
-            type="button"
-            onClick={() => setIsAdminModalOpen(true)}
-            className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-cyan-300 border border-slate-700 transition cursor-pointer shadow-sm"
-            title="Pengaturan Posisi Teks (Admin: password admin 123)"
-            aria-label="Pengaturan Posisi Teks"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
+          {/* Tombol Terapkan Gaya Teks ke Semua Kanvas di Bagian Paling Bawah */}
+          <div className="pt-2 mt-auto">
+            <button
+              type="button"
+              onClick={() => setShowConfirmApplyAll(true)}
+              className="w-full py-2.5 px-3 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 active:bg-cyan-600/40 text-cyan-300 border border-cyan-500/30 font-semibold text-xs transition cursor-pointer flex items-center justify-center shadow-md text-center"
+              title="Terapkan font, ukuran, jarak baris, tebal, miring, warna & ratarata teks ke SELURUH kanvas"
+            >
+              <span>{applyAllSuccess ? 'Telah Diterapkan ke Semua Kanvas!' : 'Terapkan Gaya Teks ke Semua Kanvas'}</span>
+            </button>
+          </div>
         </div>
       </aside>
 
-      {/* Admin Setting Modal (Password: admin 123) */}
-      <AdminPositionModal
-        isOpen={isAdminModalOpen}
-        onClose={() => setIsAdminModalOpen(false)}
-        lockedLayout={lockedLayout}
-        onSaveLockedLayout={(newLayout) => {
-          onUpdateLockedLayout(newLayout);
-        }}
-      />
+      {/* Notifikasi Konfirmasi Terapkan ke Semua Halaman */}
+      {showConfirmApplyAll && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shrink-0">
+                <AlertCircle className="w-5 h-5 text-cyan-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white tracking-tight">
+                  Terapkan Pengaturan ke Semua Halaman?
+                </h3>
+                <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">
+                  Apakah Anda yakin ingin menerapkan pengaturan gaya teks ini (font, ukuran, jarak baris, tebal, miring, warna, dan penjajaran) ke seluruh kanvas?
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800/80">
+              <button
+                type="button"
+                onClick={() => setShowConfirmApplyAll(false)}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700 transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onApplyPropsToAllPages) {
+                    onApplyPropsToAllPages({
+                      fontFamily: currentFontFamily,
+                      fontSize: currentFontSize,
+                      lineHeight: currentLineHeight,
+                      width: currentWidth,
+                      fontWeight: currentFontWeight,
+                      fontStyle: currentFontStyle,
+                      textAlign: currentTextAlign,
+                      color: currentColor,
+                    });
+                    setApplyAllSuccess(true);
+                    setTimeout(() => setApplyAllSuccess(false), 2200);
+                  }
+                  setShowConfirmApplyAll(false);
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 shadow-md shadow-cyan-600/20 transition cursor-pointer flex items-center gap-1.5"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>Ya, Terapkan</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

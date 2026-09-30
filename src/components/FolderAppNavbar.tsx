@@ -1,5 +1,6 @@
 import React from 'react';
-import { FileText, Download } from 'lucide-react';
+import { Download } from 'lucide-react';
+import { UburUburLogo } from './UburUburLogo';
 
 interface FolderAppNavbarProps {
   totalPages: number;
@@ -11,14 +12,13 @@ export const FolderAppNavbar: React.FC<FolderAppNavbarProps> = ({
   onExportPdf,
 }) => {
   return (
-    <header className="h-14 border-b border-slate-800 bg-slate-900/90 backdrop-blur-md px-4 flex items-center justify-between z-30 select-none">
-      {/* Brand: Cukup Judul Ubur Ubur Kepo */}
+    <header className="h-14 border-b border-teal-800/80 bg-teal-950/90 backdrop-blur-md px-4 flex items-center justify-between z-30 select-none">
+      {/* Brand: Cukup Judul Ubur Ubur Kepo dengan Logo Mascot */}
       <div className="flex items-center gap-2.5">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center text-white shadow-md shadow-cyan-500/20">
-          <FileText className="w-4 h-4 text-white" />
-        </div>
-        <h1 className="font-bold text-sm tracking-tight text-white">
-          Ubur Ubur Kepo
+        <UburUburLogo className="w-8 h-8" size={32} />
+        <h1 className="font-bold text-sm tracking-tight text-white flex items-center gap-1.5">
+          <span>Ubur Ubur</span>
+          <span className="text-cyan-400">Kepo</span>
         </h1>
       </div>
 

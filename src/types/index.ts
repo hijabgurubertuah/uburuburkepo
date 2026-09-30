@@ -15,7 +15,7 @@ export interface TextAnnotation {
   borderColor: string;
   borderWidth: number;
   borderRadius: number;
-  textAlign: 'left' | 'center' | 'right';
+  textAlign: 'left' | 'center' | 'right' | 'justify';
   padding: number;
   lineHeight?: number; // e.g. 1.4 to 3.5 for aligning with form blanks
   lineOffsets?: number[]; // optional custom Y offsets per line index for exact positioning

@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { ImagePage } from '../types';
 import { DriveFolderFile } from '../utils/folderService';
+import { UburUburLogo } from './UburUburLogo';
 
 interface DriveFolderSidebarProps {
   isOpen: boolean;
@@ -42,17 +43,15 @@ export const DriveFolderSidebar: React.FC<DriveFolderSidebarProps> = ({
       />
 
       {/* Sidebar 1: Galeri Gambar Dokumen */}
-      <aside className="fixed inset-y-0 left-0 z-50 w-80 sm:w-88 bg-slate-900 border-r border-slate-800 shadow-2xl flex flex-col select-none animate-in slide-in-from-left duration-200">
+      <aside className="fixed inset-y-0 left-0 z-50 w-80 sm:w-88 bg-teal-950 border-r border-teal-800 shadow-2xl flex flex-col select-none animate-in slide-in-from-left duration-200">
         {/* Header */}
-        <div className="p-3.5 border-b border-slate-800 bg-slate-900/95 space-y-2">
+        <div className="p-3.5 border-b border-teal-800 bg-teal-900/95 space-y-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                <ImageIcon className="w-4 h-4" />
-              </div>
+            <div className="flex items-center gap-2.5">
+              <UburUburLogo className="w-8 h-8" size={32} />
               <div>
-                <h2 className="text-xs font-bold text-white tracking-tight">
-                  Pilih Latar Kanvas Aktif
+                <h2 className="text-xs font-bold text-white tracking-tight flex items-center gap-1.5">
+                  <span>Pilih Latar Kanvas</span>
                 </h2>
               </div>
             </div>

@@ -21,11 +21,6 @@ import {
   create7DefaultAnnotations,
   apply7ColumnPositions
 } from './config/lockedLayout';
-import { 
-  testFirestoreConnection, 
-  fetchRemoteTextLayout, 
-  saveRemoteTextLayout 
-} from './firebase';
 import { Loader2, Menu, Type } from 'lucide-react';
 
 const DEFAULT_PLACEHOLDER_TEXT = 'Isi teks disini';
@@ -84,7 +79,6 @@ export default function App() {
   // Load folder files and ensure all pages always strictly maintain the 7 locked column positions
   useEffect(() => {
     const isMobile = typeof window !== 'undefined' ? window.innerWidth < 640 : false;
-    testFirestoreConnection();
     
     // Always enforce the 7 exact column positions on startup
     setPages((prev) =>
@@ -121,11 +115,10 @@ export default function App() {
     }
   }, [activePageIndex, activePage]);
 
-  // Update layout and synchronize position template across all images (saved to Firebase & local)
+  // Update layout and synchronize position template across all images (saved to local)
   const handleUpdateLockedLayout = async (newLayout: LockedLayoutConfig) => {
     setLockedLayout(newLayout);
     saveLockedLayout(newLayout);
-    await saveRemoteTextLayout(newLayout);
 
     const isMobile = typeof window !== 'undefined' ? window.innerWidth < 640 : false;
     setPages((prev) =>
@@ -181,7 +174,7 @@ export default function App() {
     );
   };
 
-  // Update properties across all 7 column annotations (fontSize, width, fontFamily, lineHeight, etc.)
+  // Update properties across all 7 column annotations on active page
   const handleUpdateAnnotationProps = (updates: Partial<TextAnnotation>) => {
     if (!activePage) return;
     setPages((prev) =>
@@ -192,11 +185,26 @@ export default function App() {
           annotations: page.annotations.map((ann) => ({
             ...ann,
             ...updates,
-            color: '#000000',
+            color: updates.color || ann.color || '#000000',
             backgroundColor: 'transparent',
           })),
         };
       })
+    );
+  };
+
+  // Apply properties across ALL pages
+  const handleApplyPropsToAllPages = (updates: Partial<TextAnnotation>) => {
+    setPages((prev) =>
+      prev.map((page) => ({
+        ...page,
+        annotations: page.annotations.map((ann) => ({
+          ...ann,
+          ...updates,
+          color: updates.color || ann.color || '#000000',
+          backgroundColor: 'transparent',
+        })),
+      }))
     );
   };
 
@@ -344,8 +352,8 @@ export default function App() {
       setSelectedAnnotationId(newPage.annotations[0].id);
     }
 
-    setIsTextSidebarOpen(true);
-    setIsThumbnailSidebarOpen(false);
+    setIsThumbnailSidebarOpen(true);
+    setIsTextSidebarOpen(false);
   };
 
   const handleDeletePage = (index: number) => {
@@ -378,7 +386,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 font-sans selection:bg-cyan-500 selection:text-white relative">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-teal-950 text-slate-100 font-sans selection:bg-teal-500 selection:text-white relative">
       {/* 2 Dedicated Floating Trigger Buttons on Left Edge (Width: 35px, Height: 120px) */}
       <div className="fixed left-0 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-3 pointer-events-auto">
         {/* Tombol 1: Pemuncul Sidebar Thumbnail (Ukuran Lebar 35px x Tinggi 120px) */}
@@ -389,8 +397,8 @@ export default function App() {
             setIsTextSidebarOpen(false); // Close other sidebar
           }}
           style={{ width: '35px', height: '120px' }}
-          className={`bg-slate-900/95 hover:bg-slate-800 active:bg-cyan-600 border-r border-t border-b rounded-r-xl shadow-2xl flex flex-col items-center justify-center py-2 gap-2 transition-all cursor-pointer ${
-            isThumbnailSidebarOpen ? 'border-cyan-400 text-cyan-300 ring-1 ring-cyan-500 bg-slate-800' : 'border-slate-700/80 text-slate-200 hover:border-slate-600'
+          className={`bg-teal-950/95 hover:bg-teal-900 active:bg-cyan-600 border-r border-t border-b rounded-r-xl shadow-2xl flex flex-col items-center justify-center py-2 gap-2 transition-all cursor-pointer ${
+            isThumbnailSidebarOpen ? 'border-cyan-400 text-cyan-300 ring-1 ring-cyan-500 bg-teal-900' : 'border-teal-700/80 text-teal-100 hover:border-teal-600'
           }`}
           title="Buka Daftar Gambar (Thumbnail)"
           aria-label="Menu Daftar Gambar"
@@ -409,8 +417,8 @@ export default function App() {
             setIsThumbnailSidebarOpen(false); // Close other sidebar
           }}
           style={{ width: '35px', height: '120px' }}
-          className={`bg-slate-900/95 hover:bg-slate-800 active:bg-cyan-600 border-r border-t border-b rounded-r-xl shadow-2xl flex flex-col items-center justify-center py-2 gap-2 transition-all cursor-pointer ${
-            isTextSidebarOpen ? 'border-cyan-400 text-cyan-300 ring-1 ring-cyan-500 bg-slate-800' : 'border-slate-700/80 text-slate-200 hover:border-slate-600'
+          className={`bg-teal-950/95 hover:bg-teal-900 active:bg-cyan-600 border-r border-t border-b rounded-r-xl shadow-2xl flex flex-col items-center justify-center py-2 gap-2 transition-all cursor-pointer ${
+            isTextSidebarOpen ? 'border-cyan-400 text-cyan-300 ring-1 ring-cyan-500 bg-teal-900' : 'border-teal-700/80 text-teal-100 hover:border-teal-600'
           }`}
           title="Buka Input Teks 7 Baris"
           aria-label="Menu Input Teks"
@@ -458,6 +466,7 @@ export default function App() {
           totalPages={pages.length}
           onUpdateCombinedText={handleUpdateCombinedText}
           onUpdateProps={handleUpdateAnnotationProps}
+          onApplyPropsToAllPages={handleApplyPropsToAllPages}
           lockedLayout={lockedLayout}
           onUpdateLockedLayout={handleUpdateLockedLayout}
         />
@@ -469,6 +478,10 @@ export default function App() {
             activePageIndex={activePageIndex}
             onSelectPage={setActivePageIndex}
             onAddNewPage={handleAddNewPage}
+            onOpenBackgroundSidebar={() => {
+              setIsThumbnailSidebarOpen(true);
+              setIsTextSidebarOpen(false);
+            }}
             onDeletePage={handleDeletePage}
             selectedAnnotationId={selectedAnnotationId}
             onSelectAnnotation={(id) => {

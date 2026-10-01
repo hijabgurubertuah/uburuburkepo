@@ -21,7 +21,7 @@ import {
   create7DefaultAnnotations,
   apply7ColumnPositions
 } from './config/lockedLayout';
-import { Loader2, Menu, Type } from 'lucide-react';
+import { Loader2, Menu, Type, ShoppingBag, X } from 'lucide-react';
 
 const DEFAULT_PLACEHOLDER_TEXT = 'Isi teks disini';
 
@@ -95,6 +95,26 @@ export default function App() {
   // Modals
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState<boolean>(false);
+
+  // Shopee affiliate redirect state (10s after PDF download)
+  const SHOPEE_AFFILIATE_URL = 'https://s.shopee.co.id/4VdDFHYyoT';
+  const [shopeeCountdown, setShopeeCountdown] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (shopeeCountdown === null) return;
+
+    if (shopeeCountdown === 0) {
+      window.location.href = SHOPEE_AFFILIATE_URL;
+      setShopeeCountdown(null);
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setShopeeCountdown((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [shopeeCountdown]);
 
   // Save pages state (including chosen canvas background & text) permanently to localStorage
   useEffect(() => {
@@ -542,7 +562,47 @@ export default function App() {
         onClose={() => setIsExportModalOpen(false)}
         pages={pages}
         activePageIndex={activePageIndex}
+        onPdfExportSuccess={() => setShopeeCountdown(10)}
       />
+
+      {/* Shopee Redirect Banner Countdown (10 Detik Setelah Download PDF) */}
+      {shopeeCountdown !== null && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md bg-slate-900/95 border border-orange-500/50 rounded-2xl p-4 shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom-5 duration-300 flex items-center justify-between gap-3 text-white">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400 shrink-0 font-bold text-sm shadow-inner">
+              {shopeeCountdown}s
+            </div>
+            <div>
+              <p className="text-xs font-bold text-orange-300 flex items-center gap-1.5">
+                <ShoppingBag className="w-3.5 h-3.5 text-orange-400" />
+                <span>PDF Berhasil Diunduh!</span>
+              </p>
+              <p className="text-[11px] text-slate-300 leading-snug">
+                Membuka Shopee otomatis dalam <span className="font-semibold text-orange-400">{shopeeCountdown} detik</span>...
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => {
+                window.location.href = SHOPEE_AFFILIATE_URL;
+                setShopeeCountdown(null);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-semibold text-xs shadow-md shadow-orange-500/30 transition cursor-pointer"
+            >
+              Buka Sekarang
+            </button>
+            <button
+              onClick={() => setShopeeCountdown(null)}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+              title="Batal Redirect"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Guide Modal */}
       <GuideModal

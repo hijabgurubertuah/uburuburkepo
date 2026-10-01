@@ -18,6 +18,7 @@ interface ExportModalProps {
   onClose: () => void;
   pages: ImagePage[];
   activePageIndex: number;
+  onPdfExportSuccess?: () => void;
 }
 
 export const ExportModal: React.FC<ExportModalProps> = ({
@@ -25,6 +26,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   onClose,
   pages,
   activePageIndex,
+  onPdfExportSuccess,
 }) => {
   const [filename, setFilename] = useState('Dokumen_Berteks_Hasil');
   const [scope, setScope] = useState<'all' | 'current'>('all');
@@ -39,6 +41,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     setIsExporting(true);
     setProgress({ current: 0, total: scope === 'all' ? pages.length : 1 });
 
+    let isPdfSuccess = false;
+
     try {
       if (exportType === 'pdf') {
         const pagesToExport = scope === 'all' ? pages : [pages[activePageIndex]];
@@ -52,6 +56,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         await exportPagesToPdf(pagesToExport, options, (current, total) => {
           setProgress({ current, total });
         });
+        isPdfSuccess = true;
       } else {
         // PNG export
         const pageToExport = pages[activePageIndex];
@@ -62,6 +67,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         setIsExporting(false);
         setProgress(null);
         onClose();
+        if (isPdfSuccess && onPdfExportSuccess) {
+          onPdfExportSuccess();
+        }
       }, 500);
     } catch (err) {
       console.error('Export error:', err);

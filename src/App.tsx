@@ -42,27 +42,47 @@ const getRandomInitialTemplate = (): DriveFolderFile => {
   };
 };
 
-const initialTemplate = getRandomInitialTemplate();
+const PAGES_STORAGE_KEY = 'UBUR_UBUR_PAGES_STATE_V1';
 
-const DEFAULT_INITIAL_PAGES: ImagePage[] = [
-  {
-    id: `page_${Date.now()}`,
-    title: initialTemplate.name,
-    originalFileName: initialTemplate.name,
-    dataUrl: initialTemplate.directUrl || initialTemplate.proxyUrl,
-    naturalWidth: 1600,
-    naturalHeight: 1131,
-    annotations: create7DefaultAnnotations(isInitialMobile),
-  },
-];
+const getSavedInitialPages = (): ImagePage[] => {
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem(PAGES_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const isMobile = window.innerWidth < 640;
+          return parsed.map((page: ImagePage) => ({
+            ...page,
+            annotations: apply7ColumnPositions(page.annotations, isMobile),
+          }));
+        }
+      }
+    } catch (e) {
+      console.warn('Gagal membaca data halaman tersimpan:', e);
+    }
+  }
+
+  // Pertama kali dibuka saja: pilih template acak agar tidak kosong
+  const initialTemplate = getRandomInitialTemplate();
+  return [
+    {
+      id: `page_${Date.now()}`,
+      title: initialTemplate.name,
+      originalFileName: initialTemplate.name,
+      dataUrl: initialTemplate.directUrl || initialTemplate.proxyUrl,
+      naturalWidth: 1600,
+      naturalHeight: 1131,
+      annotations: create7DefaultAnnotations(isInitialMobile),
+    },
+  ];
+};
 
 export default function App() {
-  const [pages, setPages] = useState<ImagePage[]>(DEFAULT_INITIAL_PAGES);
+  const [pages, setPages] = useState<ImagePage[]>(getSavedInitialPages);
   const [templates, setTemplates] = useState<DriveFolderFile[]>(PRELOADED_FOLDER_FILES);
   const [activePageIndex, setActivePageIndex] = useState<number>(0);
-  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(
-    DEFAULT_INITIAL_PAGES[0]?.annotations[0]?.id || null
-  );
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
   const [isLoadingFolder, setIsLoadingFolder] = useState<boolean>(false);
 
   // 2 Separate Hidden Sidebars State
@@ -75,6 +95,15 @@ export default function App() {
   // Modals
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState<boolean>(false);
+
+  // Save pages state (including chosen canvas background & text) permanently to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(PAGES_STORAGE_KEY, JSON.stringify(pages));
+    } catch (e) {
+      console.warn('Gagal menyimpan data halaman ke localStorage:', e);
+    }
+  }, [pages]);
 
   // Load folder files and ensure all pages always strictly maintain the 7 locked column positions
   useEffect(() => {
